@@ -1,0 +1,57 @@
+# Maven compilados
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Entornos virtuales Python
+venv/
+.env/
+__pycache__/
+*.pyc
+*.pyo
+
+# Datos pesados (ignorar contenido, mantener carpetas via .gitkeep)
+data/raw/*
+data/processed/*
+data/results/*
+
+# Excepciones: mantener carpetas vacías en git
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/results/.gitkeep
+!python_viz/.gitkeep
+!src/main/java/com/uq/algos/model/.gitkeep
+!src/main/java/com/uq/algos/etl/.gitkeep
+!src/main/java/com/uq/algos/sorting/.gitkeep
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
