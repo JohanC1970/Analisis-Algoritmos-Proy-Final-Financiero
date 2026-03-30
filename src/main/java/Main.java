@@ -54,6 +54,12 @@ public class Main {
         PythonBridge bridge = new PythonBridge();
         boolean exito = bridge.ejecutarVisualizacion(DATA_DIR + "benchmark.csv", DATA_DIR + "volumen.csv");
 
+        System.out.println("Abriendo gráficas automáticamente...");
+        abrirImagen("output/benchmark_algoritmos.png");
+        abrirImagen("output/top15_volumen.png");
+
+        System.out.println("=== ¡Pipeline Java completado! ===");
+
         if(exito) {
             System.out.println("🎉 ¡Todo el proyecto finalizó con éxito! Revisa la carpeta 'output/'");
         } else {
@@ -144,4 +150,20 @@ public class Main {
             System.err.println("❌ Error generando benchmark.csv: " + e.getMessage());
         }
     }
+
+
+    private static void abrirImagen(String ruta) {
+        try {
+            java.io.File archivo = new java.io.File(ruta);
+            if (archivo.exists() && java.awt.Desktop.isDesktopSupported()) {
+                java.awt.Desktop.getDesktop().open(archivo);
+            } else {
+                System.out.println("No se pudo abrir automáticamente: " + ruta);
+            }
+        } catch (Exception e) {
+            System.err.println("Error al intentar abrir la imagen: " + e.getMessage());
+        }
+    }
+
+
 }
