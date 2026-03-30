@@ -20,25 +20,9 @@ import java.util.List;
  * y con la misma posición correspondiente al mismo día.
  *
  * Este parser navega esa estructura, limpia los datos inválidos (nulos)
- * y construye un objeto RegistroFinanciero por cada día de mercado.
- *
- * Ejemplo de estructura JSON que recibe:
- * {
- *   "chart": {
- *     "result": [{
- *       "timestamp": [1609459200, 1609545600, ...],
- *       "indicators": {
- *         "quote": [{
- *           "open":[368.1, 370.2, ...],
- *           "close": [369.5, 371.0, ...],
- *           "high":[370.0, 372.1, ...],
- *           "low":[367.8, 369.9, ...],
- *           "volume":[80000000, 75000000, ...]
- *         }]
- *       }
- *     }]
- *   }
- * }
+ * aplicando la técnica de eliminación (Listwise Deletion) para mantener
+ * la veracidad de los datos financieros, y construye un objeto 
+ * RegistroFinanciero por cada día de mercado.
  */
 public class DataParser {
 
@@ -48,12 +32,12 @@ public class DataParser {
      * El proceso tiene 3 etapas:
      * 1. Navegar la estructura JSON hasta llegar a los arrays de datos.
      * 2. Recorrer los arrays en paralelo, día por día.
-     * 3. Limpiar registros inválidos y construir los objetos RegistroFinanciero.
+     * 3. Limpiar registros inválidos (nulos) documentando el proceso y construir los objetos.
      *
      * @param jsonCrudo El String JSON tal como lo devuelve Yahoo Finance.
      * @param ticker    El símbolo del activo (ej: "VOO") para asignarlo a cada registro.
      * @return Lista de RegistroFinanciero con los datos limpios y listos para procesar.
-     *         Devuelve una lista vacía si el JSON es inválido o no contiene datos.
+     * Devuelve una lista vacía si el JSON es inválido o no contiene datos.
      */
     public List<RegistroFinanciero> parsearYahooJson(String jsonCrudo, String ticker) {
 
@@ -92,13 +76,19 @@ public class DataParser {
             JsonArray volumes = quote.getAsJsonArray("volume");  // Volumen de acciones negociadas
 
             // --- ETAPA 2 y 3: Recorrido, limpieza y construcción de objetos ---
+            
+            int registrosDescartados = 0; // NUEVO: Contador para documentar la limpieza de datos
 
             for (int i = 0; i < timestamps.size(); i++) {
 
-                // LIMPIEZA: Yahoo a veces incluye entradas nulas para días festivos o
-                // días donde no hubo operaciones. Los saltamos para no corromper el dataset.
-                if (opens.get(i).isJsonNull() || closes.get(i).isJsonNull()) {
-                    continue;
+                // LIMPIEZA DE DATOS (Data Cleaning - Listwise Deletion):
+                // Yahoo a veces incluye entradas nulas para días festivos o fallos de la API.
+                // Justificación: Se opta por eliminar (descartar) el registro nulo en lugar 
+                // de interpolar, para mantener la integridad estricta de los datos financieros.
+                // Inventar un volumen de transacciones alteraría el benchmark real.
+                if (opens.get(i).isJsonNull() || closes.get(i).isJsonNull() || volumes.get(i).isJsonNull()) {
+                    registrosDescartados++;
+                    continue; // Descartamos la fila completa
                 }
 
                 // Convertimos el timestamp Unix (en segundos) a LocalDate.
@@ -120,11 +110,15 @@ public class DataParser {
                 registros.add(registro);
             }
 
-            System.out.println("Se procesaron " + registros.size() + " registros limpios para " + ticker);
+            // NUEVO: Informamos en consola los resultados de la limpieza
+            if (registrosDescartados > 0) {
+                System.out.println("  ⚙️ [Data Cleaning] Se eliminaron " + registrosDescartados + " registros incompletos/nulos.");
+            }
+            System.out.println("  ✅ Se procesaron " + registros.size() + " registros limpios para " + ticker);
 
         } catch (Exception e) {
             // Capturamos cualquier error inesperado: JSON malformado, campos faltantes, etc.
-            System.err.println("Error al parsear el JSON de " + ticker + ": " + e.getMessage());
+            System.err.println("❌ Error al parsear el JSON de " + ticker + ": " + e.getMessage());
         }
 
         return registros;
