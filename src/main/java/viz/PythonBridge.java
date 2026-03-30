@@ -93,7 +93,7 @@ public class PythonBridge {
 
         // En Windows el ejecutable suele llamarse "python"; en Unix "python3"
         String interprete = System.getProperty("os.name").toLowerCase().contains("win")
-                ? "python"
+                ? "py"
                 : "python3";
 
         cmd.add(interprete);
