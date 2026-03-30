@@ -75,6 +75,87 @@ def graficar_benchmark(ruta_csv: str):
             f"El CSV de benchmark debe tener las columnas: {columnas_req}. "
             f"Columnas encontradas: {set(df.columns)}"
         )
+# ─────────────────────────────────────────────
+# GRÁFICA 3 – Benchmark escala 0 a 200 ms
+# ─────────────────────────────────────────────
+
+def graficar_benchmark_zoom(ruta_csv: str):
+    """
+    Genera la misma gráfica de benchmark pero con el eje Y limitado a 200 ms,
+    permitiendo ver claramente los algoritmos rápidos que en la gráfica original
+    quedan aplastados por los lentos.
+    """
+    print(f"[visualizacion] Generando benchmark zoom (0-200ms) desde: {ruta_csv}")
+
+    df = pd.read_csv(ruta_csv)
+
+    columnas_req = {"algoritmo", "tiempo_ms"}
+    if not columnas_req.issubset(df.columns):
+        raise ValueError(f"Columnas requeridas: {columnas_req}. Encontradas: {set(df.columns)}")
+
+    df_sorted = df.sort_values("tiempo_ms", ascending=True).reset_index(drop=True)
+
+    if "complejidad" in df_sorted.columns:
+        etiquetas = [
+            f"{row['algoritmo']}\n{row['complejidad']}"
+            for _, row in df_sorted.iterrows()
+        ]
+    else:
+        etiquetas = df_sorted["algoritmo"].tolist()
+
+    # Paleta de colores por magnitud: verde=rápido, rojo=lento
+    valores   = df_sorted["tiempo_ms"].values
+    norm_vals = (valores - valores.min()) / (valores.max() - valores.min() + 1e-9)
+    colores   = plt.cm.RdYlGn_r(norm_vals)  # noqa
+
+    fig, ax = plt.subplots(figsize=(14, 7))
+
+    barras = ax.bar(
+        range(len(df_sorted)),
+        df_sorted["tiempo_ms"],
+        color=colores,
+        edgecolor="white",
+        linewidth=0.8,
+        alpha=0.92,
+    )
+
+    # Etiqueta de valor encima de cada barra
+    for barra, valor in zip(barras, df_sorted["tiempo_ms"]):
+        ax.text(
+            barra.get_x() + barra.get_width() / 2,
+            min(barra.get_height(), 200) + 2,
+            f"{valor:.2f} ms",
+            ha="center",
+            va="bottom",
+            fontsize=8,
+            color="#222222",
+            fontweight="bold",
+            )
+
+    ax.set_xticks(range(len(df_sorted)))
+    ax.set_xticklabels(etiquetas, rotation=30, ha="right", fontsize=9)
+    ax.set_ylabel("Tiempo de ejecución (ms)", fontsize=11)
+    ax.set_xlabel("Algoritmo de ordenamiento", fontsize=11)
+    ax.set_ylim(0, 200)
+    ax.set_title(
+        "Comparación de tiempos de ejecución – Escala 0 a 200 ms\n"
+        "(algoritmos que superan 200 ms se muestran cortados · verde = más rápido · rojo = más lento)",
+        fontsize=13,
+        fontweight="bold",
+        pad=15,
+    )
+    ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
+    ax.grid(axis="y", linestyle="--", alpha=0.5)
+    ax.set_axisbelow(True)
+
+    plt.tight_layout()
+
+    ruta_salida = os.path.join(OUTPUT_DIR, "benchmark_algoritmos_zoom.png")
+    fig.savefig(ruta_salida, dpi=DPI, bbox_inches="tight")
+    print(f"[visualizacion] Gráfica guardada: {ruta_salida}")
+
+    _mostrar_si_posible(fig)
+    plt.close(fig)
 
     # Ordenar ascendentemente por tiempo para el diagrama
     df_sorted = df.sort_values("tiempo_ms", ascending=True).reset_index(drop=True)
@@ -270,6 +351,11 @@ def main():
         print(f"[visualizacion] ERROR en gráfica de benchmark: {e}", file=sys.stderr)
         sys.exit(1)
 
+    try:
+        graficar_benchmark_zoom(ruta_benchmark)
+    except Exception as e:
+        print(f"[visualizacion] ERROR en gráfica zoom: {e}", file=sys.stderr)
+        sys.exit(1)
     try:
         graficar_top15_volumen(ruta_volumen)
     except Exception as e:

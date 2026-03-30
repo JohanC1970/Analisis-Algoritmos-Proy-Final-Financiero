@@ -57,6 +57,7 @@ public class Main {
         System.out.println("Abriendo gráficas automáticamente...");
         abrirImagen("output/benchmark_algoritmos.png");
         abrirImagen("output/top15_volumen.png");
+        abrirImagen("output/benchmark_algoritmos_zoom.png");
 
         System.out.println("=== ¡Pipeline Java completado! ===");
 
