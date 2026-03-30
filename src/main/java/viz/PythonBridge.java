@@ -15,8 +15,8 @@ import java.util.List;
  * proceso hijo y los redirige a la consola de Java para trazabilidad completa.
  *
  * Contrato de archivos esperado (generados por el benchmark en Java):
- *   data/results/benchmark_tiempos.csv  → tiempos de los 12 algoritmos
- *   data/results/top15_volumen.csv      → 15 días con mayor volumen (ordenados asc.)
+ * data/benchmark.csv  → tiempos de los algoritmos
+ * data/volumen.csv    → 15 días con mayor volumen (ordenados asc.)
  */
 public class PythonBridge {
 
@@ -37,7 +37,7 @@ public class PythonBridge {
         System.out.println("[PythonBridge] CSV benchmark : " + rutaBenchmarkCsv);
         System.out.println("[PythonBridge] CSV volumen   : " + rutaVolumenCsv);
 
-        // Construimos el comando: python visualizacion.py <csv_benchmark> <csv_volumen>
+        // Construimos el comando dinámico
         List<String> comando = buildComando(rutaBenchmarkCsv, rutaVolumenCsv);
 
         try {
@@ -79,28 +79,58 @@ public class PythonBridge {
 
         } catch (Exception e) {
             System.err.println("[PythonBridge] Error al lanzar el proceso Python: " + e.getMessage());
-            System.err.println("[PythonBridge] Asegúrate de que Python 3 esté instalado y en el PATH del sistema.");
+            System.err.println("[PythonBridge] Asegúrate de que Python esté instalado y en el PATH del sistema.");
             return false;
         }
     }
 
     /**
-     * Construye la lista de tokens del comando a ejecutar.
-     * Intenta primero con "python3" (Linux/macOS) y cae a "python" (Windows).
+     * Construye la lista de tokens del comando a ejecutar,
+     * detectando automáticamente el ejecutable correcto de Python.
      */
     private List<String> buildComando(String rutaBenchmarkCsv, String rutaVolumenCsv) {
         List<String> cmd = new ArrayList<>();
 
-        // En Windows el ejecutable suele llamarse "python"; en Unix "python3"
-        String interprete = System.getProperty("os.name").toLowerCase().contains("win")
-                ? "py"
-                : "python3";
+        // Detectar el comando de Python correcto para la máquina actual
+        String interprete = detectarComandoPython();
+        System.out.println("[PythonBridge] Comando detectado para esta máquina: " + interprete);
 
         cmd.add(interprete);
         cmd.add(SCRIPT_PATH);
         cmd.add(rutaBenchmarkCsv);
         cmd.add(rutaVolumenCsv);
         return cmd;
+    }
+
+    /**
+     * Prueba diferentes comandos de Python en segundo plano para ver cuál
+     * está instalado y configurado correctamente en la computadora actual.
+     * Esto evita conflictos entre sistemas operativos o instalaciones (py vs python vs python3).
+     */
+    private String detectarComandoPython() {
+        String[] posiblesComandos = {"py", "python", "python3"};
+
+        for (String comando : posiblesComandos) {
+            try {
+                // Intentamos abrir un subproceso rápido solo para pedir la versión de Python
+                ProcessBuilder pb = new ProcessBuilder(comando, "--version");
+                // Evitamos que imprima en consola redirigiendo la salida
+                pb.redirectErrorStream(true);
+                Process proceso = pb.start();
+
+                int exitCode = proceso.waitFor();
+
+                // Si el comando existe y finaliza correctamente, ese es el indicado
+                if (exitCode == 0) {
+                    return comando;
+                }
+            } catch (Exception e) {
+                // Si falla (ej. el comando no existe en el PATH), se ignora y prueba el siguiente
+            }
+        }
+
+        // Si por alguna razón ninguno responde, usamos "python" por defecto
+        return "python";
     }
 
     /**
