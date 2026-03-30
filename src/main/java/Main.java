@@ -2,55 +2,127 @@ import etl.ApiClient;
 import etl.DataParser;
 import model.RegistroFinanciero;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Punto de entrada del programa.
- *
- * Orquesta el pipeline ETL completo:
- *   1. EXTRAER  → Descarga el JSON histórico desde Yahoo Finance (ApiClient)
- *   2. TRANSFORMAR → Convierte el JSON en objetos Java limpios (DataParser)
- *   3. VERIFICAR → Muestra los primeros registros para confirmar que todo funciona
- */
 public class Main {
 
-    public static void main(String[] args) {
-        System.out.println("Iniciando el proceso ETL para el proyecto financiero...\n");
+    private static final String[] TICKERS = {"VOO", "AAPL", "MSFT"};
+    private static final String DATA_DIR  = "data/";
 
-        // Instanciamos las dos clases del pipeline ETL
+    public static void main(String[] args) {
+        System.out.println("=== Iniciando pipeline ETL ===\n");
+
+        // Crear carpeta data/ si no existe
+        boolean creada = new File(DATA_DIR).mkdirs();
+        if (creada) System.out.println("Carpeta data/ creada.");
+
         ApiClient cliente = new ApiClient();
         DataParser parser  = new DataParser();
+        List<RegistroFinanciero> todos = new ArrayList<>();
 
-        // Ticker del activo a analizar. VOO es el ETF que replica el índice S&P 500.
-        // Se puede cambiar por cualquier símbolo válido de Yahoo Finance (ej: "AAPL", "MSFT")
-        String ticker = "VOO";
+        // PASO 1: Descargar y parsear datos de cada ticker
+        for (String ticker : TICKERS) {
+            System.out.println("Descargando: " + ticker);
+            String json = cliente.descargarDatosHistoricos(ticker);
+            if (json != null) {
+                todos.addAll(parser.parsearYahooJson(json, ticker));
+            }
+        }
 
-        // --- PASO 1: EXTRAER ---
-        // Descargamos el JSON crudo con 5 años de datos históricos diarios
-        System.out.println("Paso 1: Descargando datos de " + ticker + "...");
-        String jsonRespuesta = cliente.descargarDatosHistoricos(ticker);
+        if (todos.isEmpty()) {
+            System.err.println("❌ No se obtuvieron datos. Verifica tu conexión a internet.");
+            return;
+        }
 
-        if (jsonRespuesta != null) {
+        System.out.println("\nTotal registros obtenidos: " + todos.size() + "\n");
 
-            // --- PASO 2: TRANSFORMAR ---
-            // Convertimos el JSON en una lista de objetos RegistroFinanciero
-            System.out.println("Paso 2: Parseando el JSON a objetos Java...");
-            List<RegistroFinanciero> registros = parser.parsearYahooJson(jsonRespuesta, ticker);
+        // PASO 2: Generar los CSV
+        generarVolumenCSV(todos);
+        generarBenchmarkCSV(todos);
 
-            // --- PASO 3: VERIFICAR ---
-            if (!registros.isEmpty()) {
-                System.out.println("\n¡Éxito! Se obtuvieron " + registros.size() + " registros históricos.");
-                System.out.println("Mostrando los primeros 5 registros convertidos:\n");
+        System.out.println("\n=== ¡Pipeline completado! ===");
+        System.out.println("Ahora ejecuta en la terminal:");
+        System.out.println("  cd python_viz");
+        System.out.println("  python visualizacion.py ..\\data\\benchmark.csv ..\\data\\volumen.csv");
+    }
 
-                // Imprimimos solo los primeros 5 como muestra de que el pipeline funciona
-                for (int i = 0; i < Math.min(5, registros.size()); i++) {
-                    System.out.println("   " + registros.get(i).toString());
+    // ─────────────────────────────────────────────────────────────
+    // volumen.csv → activo, fecha, volumen
+    // ─────────────────────────────────────────────────────────────
+    private static void generarVolumenCSV(List<RegistroFinanciero> registros) {
+        try (FileWriter fw = new FileWriter(DATA_DIR + "volumen.csv")) {
+            fw.write("activo,fecha,volumen\n");
+            for (RegistroFinanciero r : registros) {
+                fw.write(r.getActivo() + "," + r.getFecha() + "," + r.getVolumen() + "\n");
+            }
+            System.out.println("✅ volumen.csv generado (" + registros.size() + " registros)");
+        } catch (IOException e) {
+            System.err.println("❌ Error generando volumen.csv: " + e.getMessage());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // benchmark.csv → algoritmo, tiempo_ms, complejidad
+    // ─────────────────────────────────────────────────────────────
+    @SuppressWarnings("unchecked")
+    private static void generarBenchmarkCSV(List<RegistroFinanciero> registros) {
+
+        sorting.Sorter<RegistroFinanciero>[] algoritmos = new sorting.Sorter[]{
+                new sorting.BinaryInsertionSortImpl(),
+                new sorting.BitonicSortImpl(),
+                new sorting.GnomeSortImpl(),
+                new sorting.HeapSortImpl(),
+                new sorting.QuickSortImpl(),
+                new sorting.RadixSortImpl(),
+                new sorting.SelectionSort()
+        };
+
+        String[] nombres = {
+                "BinaryInsertionSort",
+                "BitonicSort",
+                "GnomeSort",
+                "HeapSort",
+                "QuickSort",
+                "RadixSort",
+                "SelectionSort"
+        };
+
+        String[] complejidades = {
+                "O(n log n)",
+                "O(n log² n)",
+                "O(n²)",
+                "O(n log n)",
+                "O(n log n)",
+                "O(nk)",
+                "O(n²)"
+        };
+
+        try (FileWriter fw = new FileWriter(DATA_DIR + "benchmark.csv")) {
+            fw.write("algoritmo,tiempo_ms,complejidad\n");
+
+            for (int i = 0; i < algoritmos.length; i++) {
+                List<RegistroFinanciero> copia = new ArrayList<>(registros);
+                long inicio = System.currentTimeMillis();
+
+                try {
+                    algoritmos[i].sort(copia);
+                } catch (Exception e) {
+                    System.err.println("  ⚠️ Error en " + nombres[i] + ": " + e.getMessage());
                 }
 
-                System.out.println("\n¡La tubería de datos funciona correctamente! Ya tienes la materia prima en memoria.");
-            } else {
-                System.out.println("La lista de registros está vacía. Revisa el JSON o el Parser.");
+                long tiempo = System.currentTimeMillis() - inicio;
+                fw.write(nombres[i] + "," + tiempo + "," + complejidades[i] + "\n");
+                System.out.println("  " + nombres[i] + " → " + tiempo + " ms");
             }
+
+            System.out.println("✅ benchmark.csv generado");
+
+        } catch (IOException e) {
+            System.err.println("❌ Error generando benchmark.csv: " + e.getMessage());
         }
     }
 }

@@ -1,0 +1,8 @@
+algoritmo,tiempo_ms,complejidad
+BinaryInsertionSort,16,O(n log n)
+BitonicSort,21,O(n log² n)
+GnomeSort,33,O(n²)
+HeapSort,3,O(n log n)
+QuickSort,2,O(n log n)
+RadixSort,10,O(nk)
+SelectionSort,25,O(n²)
