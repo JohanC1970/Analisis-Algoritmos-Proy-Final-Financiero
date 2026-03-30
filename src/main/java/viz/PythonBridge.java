@@ -108,28 +108,51 @@ public class PythonBridge {
      * Esto evita conflictos entre sistemas operativos o instalaciones (py vs python vs python3).
      */
     private String detectarComandoPython() {
-        String[] posiblesComandos = {"py", "python", "python3"};
 
-        for (String comando : posiblesComandos) {
-            try {
-                // Intentamos abrir un subproceso rápido solo para pedir la versión de Python
-                ProcessBuilder pb = new ProcessBuilder(comando, "--version");
-                // Evitamos que imprima en consola redirigiendo la salida
-                pb.redirectErrorStream(true);
-                Process proceso = pb.start();
+        // PRIMERO: intentar con el .venv del propio proyecto (más confiable)
+        String rutaVenv = System.getProperty("user.dir")
+                + File.separator + ".venv"
+                + File.separator + "Scripts"
+                + File.separator + "python.exe";
 
-                int exitCode = proceso.waitFor();
+        File pythonVenv = new File(rutaVenv);
+        if (pythonVenv.exists()) {
+            System.out.println("[PythonBridge] Usando Python del .venv del proyecto.");
+            return rutaVenv;
+        }
 
-                // Si el comando existe y finaliza correctamente, ese es el indicado
-                if (exitCode == 0) {
-                    return comando;
-                }
-            } catch (Exception e) {
-                // Si falla (ej. el comando no existe en el PATH), se ignora y prueba el siguiente
+        // SEGUNDO: buscar en rutas comunes de instalación de Python en Windows
+        String[] rutasWindows = {
+                "C:\\Python313\\python.exe",
+                "C:\\Python312\\python.exe",
+                "C:\\Python311\\python.exe",
+                "C:\\Python310\\python.exe",
+                System.getProperty("user.home") + "\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+                System.getProperty("user.home") + "\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+                System.getProperty("user.home") + "\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+                System.getProperty("user.home") + "\\AppData\\Roaming\\uv\\python\\cpython-3.14.3-windows-x86_64-none\\python.exe"
+        };
+
+        for (String ruta : rutasWindows) {
+            if (new File(ruta).exists()) {
+                System.out.println("[PythonBridge] Python encontrado en: " + ruta);
+                return ruta;
             }
         }
 
-        // Si por alguna razón ninguno responde, usamos "python" por defecto
+        // TERCERO: intentar comandos del PATH como fallback
+        String[] posiblesComandos = {"py", "python", "python3"};
+        for (String comando : posiblesComandos) {
+            try {
+                ProcessBuilder pb = new ProcessBuilder(comando, "--version");
+                pb.redirectErrorStream(true);
+                Process proceso = pb.start();
+                if (proceso.waitFor() == 0) {
+                    return comando;
+                }
+            } catch (Exception ignored) {}
+        }
+
         return "python";
     }
 
