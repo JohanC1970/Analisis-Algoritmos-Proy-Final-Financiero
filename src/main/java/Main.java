@@ -1,56 +1,170 @@
 import etl.ApiClient;
 import etl.DataParser;
 import model.RegistroFinanciero;
+import viz.PythonBridge; // ¡NUEVO! Importamos el puente
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Punto de entrada del programa.
- *
- * Orquesta el pipeline ETL completo:
- *   1. EXTRAER  → Descarga el JSON histórico desde Yahoo Finance (ApiClient)
- *   2. TRANSFORMAR → Convierte el JSON en objetos Java limpios (DataParser)
- *   3. VERIFICAR → Muestra los primeros registros para confirmar que todo funciona
- */
 public class Main {
 
-    public static void main(String[] args) {
-        System.out.println("Iniciando el proceso ETL para el proyecto financiero...\n");
+    private static final String[] TICKERS = {
+            "VOO", "AAPL", "MSFT", "GOOGL", "AMZN",
+            "TSLA", "META", "NVDA", "SPY", "QQQ",
+            "JPM", "V", "WMT", "JNJ", "PG",
+            "MA", "UNH", "HD", "BAC", "DIS"
+    };
+    private static final String DATA_DIR  = "data/";
 
-        // Instanciamos las dos clases del pipeline ETL
+    public static void main(String[] args) {
+        System.out.println("=== Iniciando pipeline ETL ===\n");
+
+        boolean creada = new File(DATA_DIR).mkdirs();
+        if (creada) System.out.println("Carpeta data/ creada.");
+
         ApiClient cliente = new ApiClient();
         DataParser parser  = new DataParser();
+        List<RegistroFinanciero> todos = new ArrayList<>();
 
-        // Ticker del activo a analizar. VOO es el ETF que replica el índice S&P 500.
-        // Se puede cambiar por cualquier símbolo válido de Yahoo Finance (ej: "AAPL", "MSFT")
-        String ticker = "VOO";
-
-        // --- PASO 1: EXTRAER ---
-        // Descargamos el JSON crudo con 5 años de datos históricos diarios
-        System.out.println("Paso 1: Descargando datos de " + ticker + "...");
-        String jsonRespuesta = cliente.descargarDatosHistoricos(ticker);
-
-        if (jsonRespuesta != null) {
-
-            // --- PASO 2: TRANSFORMAR ---
-            // Convertimos el JSON en una lista de objetos RegistroFinanciero
-            System.out.println("Paso 2: Parseando el JSON a objetos Java...");
-            List<RegistroFinanciero> registros = parser.parsearYahooJson(jsonRespuesta, ticker);
-
-            // --- PASO 3: VERIFICAR ---
-            if (!registros.isEmpty()) {
-                System.out.println("\n¡Éxito! Se obtuvieron " + registros.size() + " registros históricos.");
-                System.out.println("Mostrando los primeros 5 registros convertidos:\n");
-
-                // Imprimimos solo los primeros 5 como muestra de que el pipeline funciona
-                for (int i = 0; i < Math.min(5, registros.size()); i++) {
-                    System.out.println("   " + registros.get(i).toString());
-                }
-
-                System.out.println("\n¡La tubería de datos funciona correctamente! Ya tienes la materia prima en memoria.");
-            } else {
-                System.out.println("La lista de registros está vacía. Revisa el JSON o el Parser.");
+        for (String ticker : TICKERS) {
+            System.out.println("Descargando: " + ticker);
+            String json = cliente.descargarDatosHistoricos(ticker);
+            if (json != null) {
+                todos.addAll(parser.parsearYahooJson(json, ticker));
             }
         }
+
+        if (todos.isEmpty()) {
+            System.err.println("❌ No se obtuvieron datos. Verifica tu conexión a internet.");
+            return;
+        }
+
+        System.out.println("\nTotal registros obtenidos: " + todos.size() + "\n");
+
+        // PASO 2: Generar los CSV
+        generarTop15VolumenCSV(todos); // ¡NUEVO! Llamamos al método corregido
+        generarBenchmarkCSV(todos);
+
+        System.out.println("\n=== ¡Pipeline Java completado! ===");
+
+        // ¡NUEVO! PASO 3: Llamar automáticamente a Python
+        PythonBridge bridge = new PythonBridge();
+        boolean exito = bridge.ejecutarVisualizacion(DATA_DIR + "benchmark.csv", DATA_DIR + "volumen.csv");
+
+        System.out.println("Abriendo gráficas automáticamente...");
+        abrirImagen("output/benchmark_algoritmos.png");
+        abrirImagen("output/top15_volumen.png");
+        abrirImagen("output/benchmark_algoritmos_zoom.png");
+
+        System.out.println("=== ¡Pipeline Java completado! ===");
+
+        if(exito) {
+            System.out.println("🎉 ¡Todo el proyecto finalizó con éxito! Revisa la carpeta 'output/'");
+        } else {
+            System.out.println("⚠️ Hubo un error al generar las gráficas.");
+        }
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // ¡NUEVO! Método corregido para extraer solo el TOP 15
+    // ─────────────────────────────────────────────────────────────
+    private static void generarTop15VolumenCSV(List<RegistroFinanciero> registros) {
+        // Hacemos una copia para no alterar el orden de la lista original
+        List<RegistroFinanciero> copiaVolumen = new ArrayList<>(registros);
+
+        // Usamos el sort nativo de Java SOLO para preparar este reporte (es válido porque no es el benchmark)
+        copiaVolumen.sort((a, b) -> Double.compare(b.getVolumen(), a.getVolumen()));
+
+        try (FileWriter fw = new FileWriter(DATA_DIR + "volumen.csv")) {
+            fw.write("activo,fecha,volumen,close\n"); // Añadimos close porque Python lo espera
+
+            // Tomamos solo los primeros 15
+            int limite = Math.min(15, copiaVolumen.size());
+            for (int i = 0; i < limite; i++) {
+                RegistroFinanciero r = copiaVolumen.get(i);
+                fw.write(r.getActivo() + "," + r.getFecha() + "," + r.getVolumen() + "," + r.getClose() + "\n");
+            }
+            System.out.println("✅ volumen.csv (Top 15) generado");
+        } catch (IOException e) {
+            System.err.println("❌ Error generando volumen.csv: " + e.getMessage());
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // benchmark.csv → algoritmo, tiempo_ms, complejidad
+    // ─────────────────────────────────────────────────────────────
+    @SuppressWarnings("unchecked")
+    private static void generarBenchmarkCSV(List<RegistroFinanciero> registros) {
+
+        // ¡NUEVO! Añadidos los 12 algoritmos completos
+        sorting.Sorter<RegistroFinanciero>[] algoritmos = new sorting.Sorter[]{
+                new sorting.BinaryInsertionSortImpl(),
+                new sorting.BitonicSortImpl(),
+                new sorting.GnomeSortImpl(),
+                new sorting.HeapSortImpl(),
+                new sorting.QuickSortImpl(),
+                new sorting.RadixSortImpl(),
+                new sorting.SelectionSort(),
+                new sorting.TimSortImpl<>(), // Los que hicimos nosotros
+                new sorting.CombSortImpl<>(),
+                new sorting.TreeSortImpl<>(),
+                new sorting.PigeonholeSortImpl<RegistroFinanciero>(r -> (int) r.getFecha().toEpochDay()),
+                new sorting.BucketSortImpl<RegistroFinanciero>(r -> r.getClose())
+        };
+
+        String[] nombres = {
+                "BinaryInsertionSort", "BitonicSort", "GnomeSort", "HeapSort",
+                "QuickSort", "RadixSort", "SelectionSort", "TimSort",
+                "CombSort", "TreeSort", "PigeonholeSort", "BucketSort"
+        };
+
+        String[] complejidades = {
+                "O(n log n)", "O(n log² n)", "O(n²)", "O(n log n)",
+                "O(n log n)", "O(nk)", "O(n²)", "O(n log n)",
+                "O(n² / 2^p)", "O(n log n)", "O(n + Rango)", "O(n + k)"
+        };
+
+        try (FileWriter fw = new FileWriter(DATA_DIR + "benchmark.csv")) {
+            fw.write("algoritmo,tiempo_ms,complejidad\n");
+
+            for (int i = 0; i < algoritmos.length; i++) {
+                List<RegistroFinanciero> copia = new ArrayList<>(registros);
+                long inicio = System.currentTimeMillis();
+
+                try {
+                    algoritmos[i].sort(copia);
+                } catch (Exception e) {
+                    System.err.println("  ⚠️ Error en " + nombres[i] + ": " + e.getMessage());
+                }
+
+                long tiempo = System.currentTimeMillis() - inicio;
+                fw.write(nombres[i] + "," + tiempo + "," + complejidades[i] + "\n");
+                System.out.println("  " + nombres[i] + " → " + tiempo + " ms");
+            }
+
+            System.out.println("✅ benchmark.csv generado");
+
+        } catch (IOException e) {
+            System.err.println("❌ Error generando benchmark.csv: " + e.getMessage());
+        }
+    }
+
+
+    private static void abrirImagen(String ruta) {
+        try {
+            java.io.File archivo = new java.io.File(ruta);
+            if (archivo.exists() && java.awt.Desktop.isDesktopSupported()) {
+                java.awt.Desktop.getDesktop().open(archivo);
+            } else {
+                System.out.println("No se pudo abrir automáticamente: " + ruta);
+            }
+        } catch (Exception e) {
+            System.err.println("Error al intentar abrir la imagen: " + e.getMessage());
+        }
+    }
+
+
 }
