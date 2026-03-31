@@ -1,19 +1,20 @@
-# 1. Ejecución Rápida (Sin necesidad de IDE)
+# 1. Ejecución rápida (Sin necesidad de IDE)
 
-La forma más fácil y directa de correr este proyecto es mediante su ejecución directa, por lo que **no necesitas tener instalado ni configurado ningún entorno de desarrollo (IDE)** como Eclipse, IntelliJ o VS Code.
+La forma más fácil y directa de correr este proyecto es mediante su ejecución directa. **No necesitas tener instalado ni configurado ningún entorno de desarrollo (IDE)** como Eclipse, IntelliJ o VS Code.
 
 **Requisitos previos:**
 - **Java (JDK 21 o superior)** instalado en tu sistema.
 - **Python (3.9 o superior)** instalado en tu sistema.
 
 **Pasos para ejecutar:**
-1. Instala las librerías gráficas de Python abriendo una terminal y ejecutando por única vez: `pip install pandas matplotlib numpy seaborn`
-2. Ve a la carpeta del proyecto y simplemente haz **doble clic** en el archivo ejecutable del proyecto (como el archivo `.bat`, `.sh` o el `.jar` principal, dependiendo de cómo lo hayas descargado).
-3. ¡Listo! El programa se ejecutará automáticamente en la consola: descargará los datos financieros en tiempo real, procesará los algoritmos y, al finalizar, abrirá Python por sí solo para generar tus gráficas.
+1. Asegúrate de tener las librerías gráficas de Python instaladas. Abre una terminal y ejecuta por única vez: 
+   `pip install pandas matplotlib numpy seaborn`
+2. Ve a la carpeta raíz del proyecto y haz **doble clic** en el archivo ejecutable (por ejemplo, el archivo `.bat`, `.sh` o el `.jar` principal compilado, dependiendo de tu sistema operativo).
+3. ¡Listo! El programa se ejecutará automáticamente en la consola: descargará los datos financieros de la API, ejecutará los algoritmos y abrirá Python por sí solo para generar tus gráficas.
 
 ---
 
-# 2. Documentación Técnica del Proyecto
+# 2. Documentación del Proyecto
 
 # Análisis de Algoritmos — Proyecto Final Financiero
 **Universidad del Quindío · Ingeniería de Sistemas y Computación**
@@ -64,3 +65,37 @@ Instalar desde la carpeta raíz del proyecto:
 
 
 ## Estructura del proyecto
+
+```text
+├── src/
+│   └── main/java/
+│       ├── Main.java                  # Punto de entrada
+│       ├── etl/
+│       │   ├── ApiClient.java         # Peticiones HTTP a Yahoo Finance
+│       │   └── DataParser.java        # Parseo del JSON a objetos Java
+│       ├── model/
+│       │   └── RegistroFinanciero.java
+│       ├── sorting/                   # 12 implementaciones de algoritmos
+│       │   ├── Sorter.java            # Interfaz común
+│       │   ├── TimSortImpl.java
+│       │   ├── CombSortImpl.java
+│       │   ├── SelectionSort.java
+│       │   ├── TreeSortImpl.java
+│       │   ├── PigeonholeSortImpl.java
+│       │   ├── BucketSortImpl.java
+│       │   ├── QuickSortImpl.java
+│       │   ├── HeapSortImpl.java
+│       │   ├── BitonicSortImpl.java
+│       │   ├── GnomeSortImpl.java
+│       │   ├── BinaryInsertionSortImpl.java
+│       │   └── RadixSortImpl.java
+│       └── viz/
+│           └── PythonBridge.java      # Integración Java → Python
+├── python_viz/
+│   ├── visualizacion.py               # Script de gráficas
+│   └── requirements.txt
+├── data/
+│   ├── benchmark.csv                  # Generado en tiempo de ejecución
+│   └── volumen.csv                    # Generado en tiempo de ejecución
+├── output/                            # Imágenes PNG generadas
+└── pom.xml
