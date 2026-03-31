@@ -3,50 +3,42 @@ package model;
 import java.time.LocalDate;
 
 /**
- * RegistroFinanciero representa un día de cotización de un activo financiero.
+ * RegistroFinanciero.java - Modelo de datos central del proyecto.
  *
- * Cada instancia de esta clase equivale a una fila en una tabla de datos históricos:
- * contiene el símbolo del activo, la fecha, y los cuatro precios clave del día
- * (apertura, cierre, máximo y mínimo), más el volumen negociado.
+ * Esta clase representa un dia de cotizacion de un activo financiero.
+ * Cada objeto de esta clase equivale a una fila en una tabla de datos historicos:
+ * tiene el simbolo del activo, la fecha, los cuatro precios del dia
+ * (apertura, cierre, maximo y minimo) y el volumen negociado.
  *
- * Esta clase implementa Comparable para que las listas de registros puedan
- * ordenarse cronológicamente, lo cual es fundamental para los algoritmos
- * de análisis y visualización del proyecto.
+ * Es la clase mas importante del proyecto porque todos los algoritmos de
+ * ordenamiento trabajan sobre listas de objetos de este tipo.
+ *
+ * Implementa Comparable para definir un orden natural entre registros,
+ * lo que permite que los algoritmos de sorting puedan comparar elementos
+ * sin necesitar un Comparator externo.
  */
 public class RegistroFinanciero implements Comparable<RegistroFinanciero> {
 
-    /** activo (ej: "VOO", "AAPL", "ECOPETROL.CL") */
+    // Simbolo bursatil del activo. Ejemplos: "VOO", "AAPL", "MSFT".
+    // Nos sirve para identificar a que empresa o fondo pertenece cada registro
+    // cuando mezclamos los datos de los 20 activos en una sola lista.
     private String activo;
 
-    /** Fecha del día de mercado al que corresponde este registro */
+    // Fecha del dia de mercado.
     private LocalDate fecha;
 
-    /** Precio al que abrió el activo ese día (primer precio del día) */
-    private double open;
+    // Los cuatro precios que se requieren
+    private double open;   // Precio al que abrio el activo cuando el mercado abrio ese dia.
+    private double close;  // Precio al que cerro cuando el mercado cerro ese dia.
+    private double high;   // Precio mas alto que alcanzo en algun momento del dia.
+    private double low;    // Precio mas bajo que alcanzo en algun momento del dia.
 
-    /** Precio al que cerró el activo ese día (último precio del día) */
-    private double close;
-
-    /** Precio más alto alcanzado durante el día */
-    private double high;
-
-    /** Precio más bajo alcanzado durante el día */
-    private double low;
-
-    /** Número total de acciones o unidades negociadas durante el día */
+    // Numero total de acciones o unidades que cambiaron de mano ese dia.
+    // Es un long (no int) porque los volumenes de activos como SPY o AAPL
+    // pueden superar facilmente los 2,000 millones, que es el limite de int.
     private long volumen;
 
-    /**
-     * Crea un nuevo registro financiero con todos sus datos del día.
-     *
-     * @param activo  Símbolo del activo financiero (ej: "VOO")
-     * @param fecha   Fecha del día de mercado
-     * @param open    Precio de apertura
-     * @param close   Precio de cierre
-     * @param high    Precio máximo del día
-     * @param low     Precio mínimo del día
-     * @param volumen Volumen de unidades negociadas
-     */
+    //Constructor
     public RegistroFinanciero(String activo, LocalDate fecha, double open, double close,
                                double high, double low, long volumen) {
         this.activo  = activo;
@@ -58,59 +50,43 @@ public class RegistroFinanciero implements Comparable<RegistroFinanciero> {
         this.volumen = volumen;
     }
 
-    // -------------------------------------------------------------------------
-    // Getters
-    // -------------------------------------------------------------------------
-
-    public String getActivo() { return activo; }
-
-    public LocalDate getFecha() { return fecha; }
-
-    public double getOpen() { return open; }
-
-    public double getClose() { return close; }
-
-    public double getHigh() { return high; }
-
-    public double getLow() { return low; }
-
-    public long getVolumen() { return volumen; }
-
-    // -------------------------------------------------------------------------
-    // Comparable
-    // -------------------------------------------------------------------------
+    // Getters estandar. No hay setters porque un registro historico no deberia
+    // modificarse una vez creado: los datos del pasado no cambian.
+    public String    getActivo()  { return activo;   }
+    public LocalDate getFecha()   { return fecha;    }
+    public double    getOpen()    { return open;     }
+    public double    getClose()   { return close;    }
+    public double    getHigh()    { return high;     }
+    public double    getLow()     { return low;      }
+    public long      getVolumen() { return volumen;  }
 
     /**
-     * Compara este registro con otro para definir su orden natural.
+     * Define el orden natural de los registros para los algoritmos de sorting.
      *
-     * Criterio de ordenamiento (en orden de prioridad):
-     * 1. Por fecha ascendente (el más antiguo primero).
-     * 2. Si las fechas son iguales (caso raro pero posible con múltiples activos),
-     *    se ordena por precio de cierre ascendente.
+     * Criterio de ordenamiento:
+     *   1. Primero por fecha ascendente: el registro mas antiguo va primero, ya que lo necesitamos
+     *   para analizar series de tiempo cronologicamente.
+     *   2. Si dos registros tienen la misma fecha (puede pasar cuando mezclamos
+     *   varios activos), desempatamos por precio de cierre ascendente.
      *
-     * Este orden es el que usarán los algoritmos de sorting del proyecto.
-     *
-     * @param o El otro RegistroFinanciero con el que se compara.
-     * @return Negativo si este registro va antes, positivo si va después, 0 si son iguales.
+     * @param o  El otro registro con el que se compara.
+     * @return   Negativo si este va antes, positivo si va despues, 0 si son equivalentes.
      */
     @Override
     public int compareTo(RegistroFinanciero o) {
-        // Comparamos primero por fecha usando el compareTo nativo de LocalDate
+
+        // LocalDate.compareTo() ya implementa la comparacion cronologica correctamente.
         int comparacionFecha = this.fecha.compareTo(o.fecha);
 
-        // Si las fechas son distintas, ese resultado ya define el orden
+        // Si las fechas son distintas, ese resultado define el orden y no necesitamos mas.
         if (comparacionFecha != 0) {
             return comparacionFecha;
         }
 
-        // Fechas iguales: desempatamos por precio de cierre
-        // Double.compare evita errores de precisión que tendría una resta directa
+        // Llegamos aqui solo si las fechas son identicas. Desempatamos por precio de cierre.
         return Double.compare(this.close, o.close);
     }
 
-    // -------------------------------------------------------------------------
-    // toString
-    // -------------------------------------------------------------------------
 
     @Override
     public String toString() {
