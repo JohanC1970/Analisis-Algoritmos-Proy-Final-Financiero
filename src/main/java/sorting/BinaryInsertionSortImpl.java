@@ -3,75 +3,105 @@ package sorting;
 import java.util.List;
 import model.RegistroFinanciero;
 
-/**
- * Implementación del algoritmo Binary Insertion Sort.
- * Utiliza una adaptación de la búsqueda binaria clásica para encontrar
- * la posición exacta de inserción, optimizando el número de comparaciones.
+/*
+ * BinaryInsertionSortImpl.java - Insertion Sort con busqueda binaria.
+ *
+ * El Insertion Sort clasico toma cada elemento y lo inserta en su posicion
+ * correcta dentro de la parte ya ordenada, comparando uno a uno hacia atras.
+ * El problema es que esas comparaciones son O(n) por elemento.
+ *
+ * Esta version mejora eso: en lugar de buscar la posicion de insercion
+ * comparando elemento por elemento, usa busqueda binaria para encontrarla
+ * en O(log n) comparaciones. Esto reduce el numero total de comparaciones,
+ * aunque los desplazamientos de elementos siguen siendo O(n).
+ *
+ * Complejidad: O(n log n) en comparaciones, O(n^2) en movimientos de datos.
+ * En la practica es mas rapido que Insertion Sort clasico para listas grandes.
+ *
+ * Comparacion propia: usa esEstrictamenteMenor() con fecha y close como criterios,
+ * en lugar de compareTo(), para tener control total sobre la logica de orden.
  */
 public class BinaryInsertionSortImpl implements Sorter<RegistroFinanciero> {
 
-    /***
-     * Logida de ordenamiento principal
-     * @param listaDatos
-     */
     @Override
     public void sort(List<RegistroFinanciero> listaDatos) {
         if (listaDatos == null || listaDatos.size() <= 1) return;
 
+        /*
+         * indiceActual recorre la lista desde el segundo elemento.
+         * Todo lo que esta a la izquierda de indiceActual ya esta ordenado.
+         * En cada iteracion tomamos el elemento en indiceActual y lo insertamos
+         * en su lugar correcto dentro de la parte ordenada.
+         */
         for (int indiceActual = 1; indiceActual < listaDatos.size(); indiceActual++) {
+
+            // Guardamos el elemento a insertar antes de empezar a desplazar.
             RegistroFinanciero dato = listaDatos.get(indiceActual);
 
-            // Invocamos la búsqueda binaria con los límites de la sublista ya ordenada
+            // Buscamos la posicion correcta dentro del rango [0, indiceActual-1] ya ordenado.
             int posicionInsercion = busquedaBinaria(listaDatos, dato, 0, indiceActual - 1);
 
-            // Desplazamiento de elementos hacia la derecha para hacer espacio
+            // Desplazamos todos los elementos desde posicionInsercion hasta indiceActual-1
+            // una posicion a la derecha para abrir el hueco donde va a entrar dato.
             int indiceDesplazamiento = indiceActual - 1;
             while (indiceDesplazamiento >= posicionInsercion) {
                 listaDatos.set(indiceDesplazamiento + 1, listaDatos.get(indiceDesplazamiento));
                 indiceDesplazamiento--;
             }
 
-            // Inserción en la posición encontrada
+            // Colocamos el elemento en la posicion que encontro la busqueda binaria.
             listaDatos.set(posicionInsercion, dato);
         }
     }
 
     /**
-     * Metodo de ordenamiento binario
-     * donde debe insertarse el elemento para mantener la lista ordenada.
+     * Busqueda binaria adaptada para encontrar la posicion de insercion.
+     *
+     * A diferencia de la busqueda binaria clasica que devuelve true/false,
+     * esta version devuelve el indice donde debe insertarse el elemento
+     * para que la lista siga ordenada.
+     *
+     * Cuando los limites se cruzan (limInf > limSup), limInf apunta exactamente
+     * al lugar donde debe ir el nuevo elemento.
+     *
+     * @param arreglo La parte ya ordenada de la lista.
+     * @param dato El elemento que queremos insertar.
+     * @param limInf Limite inferior del rango de busqueda.
+     * @param limSup Limite superior del rango de busqueda.
+     * @return El indice donde debe insertarse dato.
      */
     private int busquedaBinaria(List<RegistroFinanciero> arreglo, RegistroFinanciero dato, int limInf, int limSup) {
         int centro;
 
         while (true) {
-            centro = (limInf + limSup) / 2;
-
-            // Condición de salida exacta del profesor
+            // Cuando los limites se cruzan, la busqueda termino.
+            // limInf es la posicion correcta de insercion.
             if (limInf > limSup) {
-                // Cuando los límites se cruzan, limInf es la posición correcta para insertar
                 return limInf;
             }
 
-            // Adaptación de: if (arreglo[centro] < dato)
+            // Calculamos el punto medio del rango actual.
+            centro = (limInf + limSup) / 2;
+
             if (esEstrictamenteMenor(arreglo.get(centro), dato)) {
+                // El elemento del centro es menor que dato: la posicion esta en la mitad derecha.
                 limInf = centro + 1;
-            }
-            // Adaptación de: else if (arreglo[centro] > dato)
-            else if (esEstrictamenteMenor(dato, arreglo.get(centro))) {
+            } else if (esEstrictamenteMenor(dato, arreglo.get(centro))) {
+                // dato es menor que el elemento del centro: la posicion esta en la mitad izquierda.
                 limSup = centro - 1;
-            }
-            // Adaptación de: else (cuando el dato es exactamente igual)
-            else {
-                // En la búsqueda clásica aquí retornaría 'true'.
-                // Para nuestro ordenamiento, avanzamos a la derecha para mantener la estabilidad.
+            } else {
+                // Los elementos son equivalentes (misma fecha y mismo close).
+                // Avanzamos a la derecha para mantener la estabilidad del algoritmo:
+                // los elementos iguales conservan su orden relativo original.
                 limInf = centro + 1;
             }
         }
     }
 
     /**
-     * Evalúa jerárquicamente dos registros financieros.
-     * Criterio principal: Fecha. Criterio secundario: Precio de cierre (Close).
+     * Compara dos registros: devuelve true si A debe ir antes que B.
+     * Criterio principal: fecha (formato numerico AAAAMMDD).
+     * Criterio de desempate: precio de cierre en centavos.
      */
     private boolean esEstrictamenteMenor(RegistroFinanciero registroA, RegistroFinanciero registroB) {
         long fechaA = obtenerFechaNumerica(registroA);
@@ -86,6 +116,10 @@ public class BinaryInsertionSortImpl implements Sorter<RegistroFinanciero> {
         return precioA < precioB;
     }
 
+    /*
+     * Convierte la fecha a un entero AAAAMMDD para comparacion rapida.
+     * Ejemplo: 2024-03-15 -> 20240315
+     */
     private long obtenerFechaNumerica(RegistroFinanciero registro) {
         if (registro.getFecha() == null) return 0;
         return (registro.getFecha().getYear() * 10000L) +
@@ -93,6 +127,10 @@ public class BinaryInsertionSortImpl implements Sorter<RegistroFinanciero> {
                 registro.getFecha().getDayOfMonth();
     }
 
+    /*
+     * Convierte el precio de cierre a centavos enteros para evitar
+     * errores de precision con doubles en la comparacion.
+     */
     private long obtenerPrecioCentavos(RegistroFinanciero registro) {
         return (long) (registro.getClose() * 100);
     }

@@ -1,12 +1,29 @@
-package sorting;
+﻿package sorting;
+
 import java.util.List;
 
-/**
- * Implementación del algoritmo Comb Sort (Ordenamiento Peine).
- * Es una mejora del Bubble Sort. En lugar de comparar elementos adyacentes,
- * compara elementos separados por un "gap" (brecha) que se va reduciendo
- * progresivamente. Esto elimina rápidamente los valores pequeños al final
- * de la lista (conocidos como "tortugas").
+/*
+ * CombSortImpl.java - Implementacion del algoritmo Comb Sort.
+ *
+ * Comb Sort es una mejora directa de Bubble Sort. El problema de Bubble Sort es
+ * que solo compara elementos adyacentes, lo que hace que los elementos pequeños
+ * al final de la lista (llamados "tortugas") tarden muchisimo en llegar a su
+ * posicion correcta al inicio.
+ *
+ * Comb Sort resuelve esto comparando elementos separados por un "gap" (brecha)
+ * que empieza grande y se va reduciendo en cada pasada hasta llegar a 1.
+ * Cuando el gap es 1, el algoritmo se comporta exactamente como Bubble Sort,
+ * pero para ese punto las tortugas ya fueron eliminadas y la lista esta casi ordenada.
+ *
+ * El factor de reduccion del gap es 1.3, determinado empiricamente como el valor
+ * que da mejor rendimiento en la practica.
+ *
+ * Complejidad: O(n^2 / 2^p) donde p es el numero de incrementos del gap.
+ * En la practica se comporta mucho mejor que Bubble Sort para listas grandes.
+ *
+ * Esta implementacion es generica (T extends Comparable<T>) y usa compareTo()
+ * en lugar de un comparador propio, por lo que funciona con cualquier tipo
+ * que tenga un orden natural definido.
  */
 public class CombSortImpl<T extends Comparable<T>> implements Sorter<T> {
 
@@ -14,42 +31,42 @@ public class CombSortImpl<T extends Comparable<T>> implements Sorter<T> {
     public void sort(List<T> lista) {
         int n = lista.size();
 
-        // Inicializamos el gap con el tamaño total de la lista
+        // El gap empieza con el tamaño total de la lista y se reduce en cada pasada.
         int gap = n;
 
-        // Bandera para saber si hubo intercambios en la pasada actual
+        /*
+         * swapped es una bandera que indica si hubo algun intercambio en la pasada actual.
+         * Empieza en true para que el bucle entre al menos una vez.
+         * Cuando gap llega a 1 y no hay intercambios, la lista esta ordenada y el bucle termina.
+         */
         boolean swapped = true;
 
-        // El ciclo continúa mientras el gap no sea 1 o mientras sigan ocurriendo intercambios
+        // El bucle continua mientras el gap no sea 1 o mientras sigan ocurriendo intercambios.
+        // Ambas condiciones deben ser falsas para terminar: gap==1 Y sin intercambios.
         while (gap != 1 || swapped) {
 
-            // 1. Actualizar el gap para la iteración actual
+            // Calculamos el nuevo gap para esta pasada.
             gap = getNextGap(gap);
 
-            // Asumimos que no habrá intercambios hasta que se demuestre lo contrario
+            // Asumimos que no habra intercambios hasta que encontremos uno.
             swapped = false;
 
-            // 2. Recorrer la lista comparando elementos separados por el 'gap'
+            // Recorremos la lista comparando cada elemento con el que esta "gap" posiciones adelante.
+            // El limite es n-gap para no salirnos del arreglo al acceder a i+gap.
             for (int i = 0; i < n - gap; i++) {
 
                 T elementoActual = lista.get(i);
                 T elementoSiguiente = lista.get(i + gap);
 
-                // Como usamos Genéricos (T), reemplazamos el '>' por compareTo()
-                // Si el elementoActual es mayor al elementoSiguiente, retorna un número > 0
+                // compareTo > 0 significa que elementoActual es mayor que elementoSiguiente:
+                // estan en el orden equivocado y hay que intercambiarlos.
                 if (elementoActual.compareTo(elementoSiguiente) > 0) {
 
-                    // 3. Realizar el intercambio (Swap)
-                    // La variable temporal debe ser de tipo T, no int
-                    T temp = elementoActual;
-
-                    // Colocamos el elemento menor en la posición izquierda
+                    // Intercambio
                     lista.set(i, elementoSiguiente);
+                    lista.set(i + gap, elementoActual);
 
-                    // Colocamos el elemento mayor (que guardamos en temp) en la posición derecha
-                    lista.set(i + gap, temp);
-
-                    // Marcamos que sí hubo un intercambio
+                    // Marcamos que hubo al menos un intercambio en esta pasada.
                     swapped = true;
                 }
             }
@@ -57,12 +74,16 @@ public class CombSortImpl<T extends Comparable<T>> implements Sorter<T> {
     }
 
     /**
-     * Calcula la siguiente brecha (gap) dividiendo la actual por el "Shrink Factor" (Factor de reducción).
-     * Empircamente se ha demostrado que el factor ideal es 1.3.
-     * En lugar de usar decimales pesados (gap / 1.3), es más eficiente multiplicar por 10 y dividir por 13.
+     * Calcula el siguiente gap dividiendo el actual por el factor de reduccion
      *
-     * @param gap El tamaño de la brecha actual.
-     * @return El nuevo tamaño de la brecha (mínimo 1).
+     * En lugar de usar division de punto flotante (gap / 1.3), multiplicamos por 10
+     * y dividimos por 13, que es equivalente pero mas eficiente al trabajar solo con enteros.
+     *
+     * El gap nunca puede ser menor que 1: si el calculo da 0, lo forzamos a 1
+     * para que el algoritmo haga al menos una pasada final como Bubble Sort.
+     *
+     * @param gap El gap de la pasada actual.
+     * @return El gap para la siguiente pasada (minimo 1).
      */
     private int getNextGap(int gap) {
         gap = (gap * 10) / 13;
@@ -73,10 +94,8 @@ public class CombSortImpl<T extends Comparable<T>> implements Sorter<T> {
         return gap;
     }
 
-    // Veo que agregaste este método a tu interfaz Sorter, ¡muy buena idea para la impresión en consola!
     @Override
     public String getNombre() {
         return "Comb Sort";
     }
 }
-
