@@ -1,7 +1,7 @@
 # Análisis de Algoritmos — Proyecto Final Financiero
 **Universidad del Quindío · Ingeniería de Sistemas y Computación**
 
-Pipeline de análisis financiero que descarga datos históricos de activos bursátiles, ejecuta benchmarks de 12 algoritmos de ordenamiento y genera visualizaciones automáticas mediante Python.
+análisis financiero que descarga datos históricos de activos bursátiles, ejecuta benchmarks de 12 algoritmos de ordenamiento y genera visualizaciones automáticas mediante Python.
 
 ---
 
@@ -15,29 +15,16 @@ Pipeline de análisis financiero que descarga datos históricos de activos burs�
 
 > El proyecto usa `java.net.http.HttpClient` (disponible desde Java 11) y records/features de Java 21. No compilará con versiones anteriores.
 
-Verificar instalación:
-```bash
-java -version
-mvn -version
-```
 
 ### Python
 | Requisito | Versión mínima |
 |-----------|---------------|
 | Python | **3.9+** |
 
-Verificar instalación:
-```bash
-python --version
-# o en algunos sistemas:
-python3 --version
-```
-
----
 
 ## Dependencias Java
 
-Gestionadas automáticamente por Maven (`pom.xml`):
+Gestionadas por Maven (`pom.xml`):
 
 | Librería | Versión | Uso |
 |----------|---------|-----|
@@ -45,15 +32,11 @@ Gestionadas automáticamente por Maven (`pom.xml`):
 
 Maven las descarga solas al compilar. No se requiere instalación manual.
 
----
 
 ## Dependencias Python
 
 Instalar desde la carpeta raíz del proyecto:
 
-```bash
-pip install -r python_viz/requirements.txt
-```
 
 | Librería | Uso |
 |----------|-----|
@@ -62,22 +45,6 @@ pip install -r python_viz/requirements.txt
 | `numpy` | Cálculos auxiliares para escalado de colores en gráficas |
 | `seaborn` | Estilos visuales complementarios |
 
-> Se recomienda usar un entorno virtual para no contaminar la instalación global de Python.
-
-```bash
-# Crear y activar entorno virtual (opcional pero recomendado)
-python -m venv .venv
-
-# Windows
-.venv\Scripts\activate
-
-# macOS / Linux
-source .venv/bin/activate
-
-pip install -r python_viz/requirements.txt
-```
-
----
 
 ## Estructura del proyecto
 
@@ -118,28 +85,6 @@ pip install -r python_viz/requirements.txt
 
 ---
 
-## Cómo ejecutar
-
-### 1. Clonar el repositorio
-```bash
-git clone <url-del-repositorio>
-cd Analisis-Algoritmos-Proy-Final-Financiero
-```
-
-### 2. Instalar dependencias Python
-```bash
-pip install -r python_viz/requirements.txt
-```
-
-### 3. Compilar y ejecutar con Maven
-```bash
-mvn compile exec:java -Dexec.mainClass="Main"
-```
-
-O desde un IDE (IntelliJ IDEA, Eclipse, VS Code con extensión Java): ejecutar directamente `Main.java`.
-
-### 4. Resultados
-Al finalizar, se generan automáticamente en la carpeta `output/`:
 
 | Archivo | Contenido |
 |---------|-----------|
@@ -164,4 +109,3 @@ El programa descarga datos históricos de **Yahoo Finance** al ejecutarse. Se re
 - **No se usan librerías de alto nivel** como `yfinance` o `pandas_datareader`. La descarga se realiza mediante peticiones HTTP directas (`java.net.http.HttpClient`).
 - **Sin interfaz gráfica en Java.** Toda la visualización es delegada al script Python.
 - El script Python es invocado automáticamente por `PythonBridge.java` al terminar el benchmark. Si Python no está en el PATH, el bridge intenta detectarlo en rutas comunes de instalación en Windows.
-- Los archivos `data/benchmark.csv` y `data/volumen.csv` son sobreescritos en cada ejecución.
