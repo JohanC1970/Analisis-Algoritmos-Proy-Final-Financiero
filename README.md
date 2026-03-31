@@ -1,7 +1,7 @@
 # Análisis de Algoritmos — Proyecto Final Financiero
 **Universidad del Quindío · Ingeniería de Sistemas y Computación**
 
-análisis financiero que descarga datos históricos de activos bursátiles, ejecuta benchmarks de 12 algoritmos de ordenamiento y genera visualizaciones automáticas mediante Python.
+Análisis financiero que descarga datos históricos de activos bursátiles, ejecuta benchmarks de 12 algoritmos de ordenamiento y genera visualizaciones automáticas mediante Python.
 
 ---
 
