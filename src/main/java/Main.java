@@ -198,7 +198,7 @@ public class Main {
         // Complejidad teorica de cada algoritmo en notacion Big-O.
         // Estos valores son los que aparecen en la grafica de Python para contextualizar los tiempos.
         String[] complejidades = {
-                "O(n log n)", "O(n log^2 n)", "O(n^2)", "O(n log n)",
+                "O(n^2)", "O(n log^2 n)", "O(n^2)", "O(n log n)",
                 "O(n log n)", "O(nk)", "O(n^2)", "O(n log n)",
                 "O(n^2 / 2^p)", "O(n log n)", "O(n + Rango)", "O(n + k)"
         };
