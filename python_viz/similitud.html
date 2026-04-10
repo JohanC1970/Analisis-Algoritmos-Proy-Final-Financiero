@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análisis de Similitud — Req. 3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* ── Variables ── */
+        :root {
+            --bg:        #070d1a;
+            --surface:   #0f1c2e;
+            --card:      #132035;
+            --border:    #1e3a5f;
+            --accent:    #3b82f6;
+            --accent2:   #06b6d4;
+            --green:     #22c55e;
+            --amber:     #f59e0b;
+            --purple:    #a855f7;
+            --red:       #ef4444;
+            --text:      #e2e8f0;
+            --muted:     #64748b;
+            --mono:      'Space Mono', monospace;
+            --sans:      'DM Sans', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ── Fondo animado ── */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background:
+                    radial-gradient(ellipse 80% 50% at 20% 20%, rgba(59,130,246,0.06) 0%, transparent 60%),
+                    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6,182,212,0.04) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── Layout ── */
+        .wrapper { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+        /* ── Header ── */
+        header {
+            display: flex; align-items: flex-end; gap: 1.5rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1.5rem; margin-bottom: 2.5rem;
+        }
+        .header-badge {
+            font-family: var(--mono);
+            font-size: 0.65rem; font-weight: 700;
+            letter-spacing: 0.15em; text-transform: uppercase;
+            color: var(--accent2);
+            background: rgba(6,182,212,0.08);
+            border: 1px solid rgba(6,182,212,0.25);
+            border-radius: 4px; padding: 0.2rem 0.55rem;
+            margin-bottom: 0.5rem;
+        }
+        header h1 {
+            font-family: var(--mono);
+            font-size: clamp(1.4rem, 3vw, 2rem);
+            color: var(--text); font-weight: 700;
+            line-height: 1.1;
+        }
+        header p { color: var(--muted); font-size: 0.9rem; margin-top: 0.4rem; max-width: 480px; }
+        .uniq-logo {
+            margin-left: auto;
+            font-family: var(--mono); font-size: 0.65rem;
+            color: var(--muted); text-align: right; line-height: 1.6;
+        }
+        .uniq-logo strong { color: var(--accent); display: block; font-size: 0.8rem; }
+
+        /* ── Panel de selección ── */
+        .selector-panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.75rem 2rem;
+            margin-bottom: 2rem;
+        }
+        .selector-panel h2 {
+            font-family: var(--mono); font-size: 0.75rem;
+            letter-spacing: 0.12em; text-transform: uppercase;
+            color: var(--accent); margin-bottom: 1.25rem;
+        }
+        .selectors-row {
+            display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap;
+        }
+        .field { flex: 1; min-width: 140px; }
+        .field label {
+            display: block; font-size: 0.72rem; font-weight: 600;
+            letter-spacing: 0.08em; text-transform: uppercase;
+            color: var(--muted); margin-bottom: 0.45rem;
+        }
+        select {
+            width: 100%; background: var(--card);
+            border: 1px solid var(--border);
+            color: var(--text); border-radius: 8px;
+            padding: 0.65rem 0.9rem; font-family: var(--mono);
+            font-size: 0.9rem; appearance: none;
+            cursor: pointer; transition: border-color 0.2s;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 0.9rem center;
+        }
+        select:focus { outline: none; border-color: var(--accent); }
+
+        .vs-sep {
+            font-family: var(--mono); font-size: 1rem; font-weight: 700;
+            color: var(--muted); padding-bottom: 0.7rem; flex-shrink: 0;
+        }
+
+        .btn-comparar {
+            background: var(--accent);
+            color: white; border: none; border-radius: 8px;
+            padding: 0.7rem 1.8rem; font-family: var(--mono);
+            font-size: 0.85rem; font-weight: 700;
+            letter-spacing: 0.05em; cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            white-space: nowrap;
+        }
+        .btn-comparar:hover { background: #2563eb; }
+        .btn-comparar:active { transform: scale(0.97); }
+        .btn-comparar:disabled { background: var(--border); cursor: not-allowed; }
+
+        /* ── Estado / loading ── */
+        .status-bar {
+            font-family: var(--mono); font-size: 0.78rem;
+            color: var(--muted); margin-top: 1rem;
+            min-height: 1.2rem;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .dot-pulse {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: var(--accent);
+            animation: pulse 1s infinite;
+            flex-shrink: 0;
+        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+        /* ── Sección de resultados ── */
+        #resultados { display: none; }
+
+        .meta-bar {
+            display: flex; align-items: center; gap: 1.5rem;
+            background: rgba(59,130,246,0.06);
+            border: 1px solid rgba(59,130,246,0.18);
+            border-radius: 8px; padding: 0.75rem 1.25rem;
+            margin-bottom: 2rem; flex-wrap: wrap;
+        }
+        .meta-item { display: flex; flex-direction: column; gap: 0.15rem; }
+        .meta-item .meta-label { font-size: 0.65rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+        .meta-item .meta-value { font-family: var(--mono); font-size: 0.95rem; color: var(--text); font-weight: 700; }
+        .meta-sep { width: 1px; height: 2rem; background: var(--border); flex-shrink: 0; }
+
+        /* ── Grid de tarjetas de algoritmos ── */
+        .algo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem; margin-bottom: 2rem;
+        }
+        .algo-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.4rem 1.5rem;
+            position: relative; overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .algo-card::before {
+            content: ''; position: absolute;
+            top: 0; left: 0; right: 0; height: 2px;
+        }
+        .algo-card:nth-child(1)::before { background: var(--accent); }
+        .algo-card:nth-child(2)::before { background: var(--green); }
+        .algo-card:nth-child(3)::before { background: var(--amber); }
+        .algo-card:nth-child(4)::before { background: var(--purple); }
+
+        .algo-name {
+            font-family: var(--mono); font-size: 0.75rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.08em;
+            margin-bottom: 0.75rem;
+        }
+        .algo-card:nth-child(1) .algo-name { color: var(--accent); }
+        .algo-card:nth-child(2) .algo-name { color: var(--green); }
+        .algo-card:nth-child(3) .algo-name { color: var(--amber); }
+        .algo-card:nth-child(4) .algo-name { color: var(--purple); }
+
+        .algo-value {
+            font-family: var(--mono); font-size: 1.85rem; font-weight: 700;
+            color: var(--text); line-height: 1; margin-bottom: 0.5rem;
+        }
+        .algo-complexity {
+            font-family: var(--mono); font-size: 0.7rem; color: var(--muted);
+            margin-bottom: 0.65rem;
+        }
+        .algo-interp {
+            font-size: 0.75rem; color: var(--muted); line-height: 1.5;
+            border-top: 1px solid var(--border); padding-top: 0.65rem; margin-top: 0.5rem;
+        }
+        .algo-time {
+            position: absolute; top: 1rem; right: 1rem;
+            font-family: var(--mono); font-size: 0.65rem; color: var(--muted);
+        }
+
+        /* ── Panel de estadísticas ── */
+        .stats-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        @media(max-width: 600px) { .stats-grid { grid-template-columns: 1fr; } }
+
+        .stats-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 1.4rem 1.5rem;
+        }
+        .stats-card h3 {
+            font-family: var(--mono); font-size: 0.8rem;
+            color: var(--text); margin-bottom: 1rem;
+            display: flex; align-items: center; gap: 0.5rem;
+        }
+        .ticker-tag {
+            font-size: 0.7rem; padding: 0.15rem 0.5rem;
+            background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3);
+            border-radius: 4px; color: var(--accent);
+        }
+        .stat-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 0.4rem 0; border-bottom: 1px solid rgba(30,58,95,0.5);
+        }
+        .stat-row:last-child { border-bottom: none; }
+        .stat-label { font-size: 0.78rem; color: var(--muted); }
+        .stat-val { font-family: var(--mono); font-size: 0.82rem; color: var(--text); }
+        .stat-val.pos { color: var(--green); }
+        .stat-val.neg { color: var(--red); }
+
+        /* ── Gráfico ── */
+        .chart-panel {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem;
+            overflow: hidden;
+        }
+        .chart-panel h3 {
+            font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.1em;
+            text-transform: uppercase; color: var(--muted); margin-bottom: 1rem;
+        }
+        .chart-panel img { width: 100%; border-radius: 8px; }
+
+        /* ── Formulación matemática ── */
+        .formulas-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+        .formula-card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: 1.25rem;
+        }
+        .formula-card h4 {
+            font-family: var(--mono); font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.1em;
+            color: var(--muted); margin-bottom: 0.8rem;
+        }
+        .formula-card pre {
+            font-family: var(--mono); font-size: 0.72rem;
+            color: var(--accent2); line-height: 1.7;
+            white-space: pre-wrap; overflow-wrap: break-word;
+        }
+        .section-title {
+            font-family: var(--mono); font-size: 0.7rem; font-weight: 700;
+            letter-spacing: 0.12em; text-transform: uppercase;
+            color: var(--muted); margin-bottom: 1rem;
+        }
+
+        /* ── Error ── */
+        .error-box {
+            background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25);
+            border-radius: 8px; padding: 1rem 1.25rem;
+            color: #fca5a5; font-size: 0.88rem;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="wrapper">
+
+    <!-- HEADER -->
+    <header>
+        <div>
+            <div class="header-badge">Requerimiento 3</div>
+            <h1>Análisis de Similitud<br>de Series de Tiempo</h1>
+            <p>Cuatro algoritmos implementados en Java comparan los retornos diarios de dos activos financieros.</p>
+        </div>
+        <div class="uniq-logo">
+            <strong>UniQuindío</strong>
+            Análisis de Algoritmos<br>
+            Ing. Sistemas · 2026·1
+        </div>
+    </header>
+
+    <!-- SELECTOR -->
+    <div class="selector-panel">
+        <h2>// Selección de activos</h2>
+        <div class="selectors-row">
+            <div class="field">
+                <label>Activo A</label>
+                <select id="selectA"><option value="">Cargando...</option></select>
+            </div>
+            <div class="vs-sep">VS</div>
+            <div class="field">
+                <label>Activo B</label>
+                <select id="selectB"><option value="">Cargando...</option></select>
+            </div>
+            <button class="btn-comparar" id="btnComparar" onclick="comparar()">Comparar →</button>
+        </div>
+        <div class="status-bar" id="statusBar"></div>
+    </div>
+
+    <!-- ERROR -->
+    <div class="error-box" id="errorBox"></div>
+
+    <!-- RESULTADOS -->
+    <div id="resultados">
+
+        <!-- Meta bar -->
+        <div class="meta-bar" id="metaBar"></div>
+
+        <!-- Tarjetas de algoritmos -->
+        <p class="section-title">// Resultados por algoritmo</p>
+        <div class="algo-grid" id="algoGrid"></div>
+
+        <!-- Estadísticas -->
+        <p class="section-title">// Estadísticas descriptivas de retornos diarios</p>
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <!-- Gráfico -->
+        <div class="chart-panel" id="chartPanel" style="display:none">
+            <h3>// Comparación de magnitudes (valor absoluto por algoritmo)</h3>
+            <img id="imgBarras" src="" alt="Gráfico de barras">
+        </div>
+
+        <!-- Fórmulas -->
+        <p class="section-title" style="margin-top:2rem">// Formulación matemática</p>
+        <div class="formulas-grid">
+            <div class="formula-card">
+                <h4>Distancia Euclidiana · O(n)</h4>
+                <pre>d(A,B) = √[ Σ(aᵢ - bᵢ)² ]
+         i=1..n
+
+donde aᵢ, bᵢ son los retornos
+diarios del activo A y B en el día i.</pre>
+            </div>
+            <div class="formula-card">
+                <h4>Correlación de Pearson · O(n)</h4>
+                <pre>       Σ(aᵢ-ā)(bᵢ-b̄)
+r = ─────────────────────
+    √Σ(aᵢ-ā)² · √Σ(bᵢ-b̄)²
+
+ā, b̄ = media de cada serie.
+r ∈ [-1, 1]</pre>
+            </div>
+            <div class="formula-card">
+                <h4>Dynamic Time Warping · O(n·m)</h4>
+                <pre>D(i,j) = |aᵢ - bⱼ| +
+  min( D(i-1,j),   ← avanza A
+       D(i,j-1),   ← avanza B
+       D(i-1,j-1)) ← ambos
+
+Banda Sakoe-Chiba: w = 10% de n.</pre>
+            </div>
+            <div class="formula-card">
+                <h4>Similitud Coseno · O(n)</h4>
+                <pre>         A · B        Σ aᵢbᵢ
+cos θ = ─────── = ─────────────────
+        ‖A‖·‖B‖   √Σaᵢ² · √Σbᵢ²
+
+Mide ángulo entre vectores.
+cos θ ∈ [-1, 1]</pre>
+            </div>
+        </div>
+
+    </div><!-- /resultados -->
+
+</div><!-- /wrapper -->
+
+<script>
+    const JAVA_BASE = "";  // Flask hace de proxy, los endpoints son relativos.
+
+    // ── Al cargar: pedir la lista de tickers a Java (vía Flask) ──────────────────
+    window.addEventListener("DOMContentLoaded", async () => {
+        try {
+            setStatus("Conectando con el servidor Java...", true);
+            const r = await fetch("/api/tickers");
+            const data = await r.json();
+
+            if (!data.tickers || data.tickers.length === 0) {
+                setStatus("Sin tickers disponibles. ¿Está corriendo MainSimilitud.java?", false);
+                return;
+            }
+
+            const selectA = document.getElementById("selectA");
+            const selectB = document.getElementById("selectB");
+
+            selectA.innerHTML = "";
+            selectB.innerHTML = "";
+
+            data.tickers.forEach((t, i) => {
+                selectA.add(new Option(t, t));
+                selectB.add(new Option(t, t));
+            });
+
+            // Selección predeterminada diferente para A y B.
+            selectA.value = data.tickers[0] || "";
+            selectB.value = data.tickers[1] || "";
+
+            setStatus(`${data.tickers.length} activos disponibles. Selecciona dos y presiona Comparar.`, false);
+        } catch (e) {
+            setStatus("Error al conectar con el servidor. Verifica que Java esté corriendo.", false);
+        }
+    });
+
+    // ── Comparar ─────────────────────────────────────────────────────────────────
+    async function comparar() {
+        const tickerA = document.getElementById("selectA").value;
+        const tickerB = document.getElementById("selectB").value;
+
+        if (!tickerA || !tickerB) { setStatus("Selecciona ambos activos.", false); return; }
+        if (tickerA === tickerB)  { setStatus("Los dos activos deben ser diferentes.", false); return; }
+
+        document.getElementById("btnComparar").disabled = true;
+        document.getElementById("resultados").style.display = "none";
+        document.getElementById("errorBox").style.display = "none";
+        setStatus(`Calculando similitud ${tickerA} vs ${tickerB}… (DTW puede tardar ~2-4 s)`, true);
+
+        try {
+            const r = await fetch(`/api/similitud?a=${tickerA}&b=${tickerB}`);
+            const data = await r.json();
+
+            if (!r.ok) {
+                mostrarError(data.error || "Error desconocido");
+                return;
+            }
+
+            renderResultados(data);
+            setStatus(`Comparación completada: ${tickerA} vs ${tickerB} (${data.diasComunes} días comunes).`, false);
+        } catch (e) {
+            mostrarError(`Error de red: ${e.message}`);
+        } finally {
+            document.getElementById("btnComparar").disabled = false;
+        }
+    }
+
+    // ── Renderizar resultados ────────────────────────────────────────────────────
+    function renderResultados(data) {
+        // Meta bar
+        document.getElementById("metaBar").innerHTML = `
+    <div class="meta-item"><span class="meta-label">Par comparado</span><span class="meta-value">${data.tickerA} / ${data.tickerB}</span></div>
+    <div class="meta-sep"></div>
+    <div class="meta-item"><span class="meta-label">Días comunes</span><span class="meta-value">${data.diasComunes}</span></div>
+    <div class="meta-sep"></div>
+    <div class="meta-item"><span class="meta-label">Algoritmos</span><span class="meta-value">4</span></div>
+    <div class="meta-sep"></div>
+    <div class="meta-item"><span class="meta-label">Serie usada</span><span class="meta-value">Retornos diarios</span></div>
+  `;
+
+        // Tarjetas de algoritmos
+        const colores = ["var(--accent)","var(--green)","var(--amber)","var(--purple)"];
+        document.getElementById("algoGrid").innerHTML = data.resultados.map((r, i) => `
+    <div class="algo-card">
+      <div class="algo-time">${r.tiempoMs} ms</div>
+      <div class="algo-name">${r.nombre}</div>
+      <div class="algo-value">${isNaN(r.valor) ? "N/A" : r.valor.toFixed(6)}</div>
+      <div class="algo-complexity">${r.complejidad}</div>
+      <div class="algo-interp">${r.interpretacion}</div>
+    </div>
+  `).join("");
+
+        // Estadísticas
+        const fmt = (v, pct=true) => {
+            if (v === undefined || v === null) return "—";
+            const s = (v * (pct ? 100 : 1)).toFixed(pct ? 3 : 4);
+            return pct ? s + "%" : s;
+        };
+        const fmtClass = v => v > 0 ? "pos" : v < 0 ? "neg" : "";
+
+        const statCard = (s) => `
+    <div class="stats-card">
+      <h3><span class="ticker-tag">${s.ticker}</span> Estadísticas de retornos</h3>
+      <div class="stat-row"><span class="stat-label">Retorno medio diario</span>
+        <span class="stat-val ${fmtClass(s.mediaRetorno)}">${fmt(s.mediaRetorno)}</span></div>
+      <div class="stat-row"><span class="stat-label">Desv. estándar</span>
+        <span class="stat-val">${fmt(s.desvStd)}</span></div>
+      <div class="stat-row"><span class="stat-label">Volatilidad anual</span>
+        <span class="stat-val">${fmt(s.volatilidadAnual)}</span></div>
+      <div class="stat-row"><span class="stat-label">Retorno mínimo</span>
+        <span class="stat-val neg">${fmt(s.minRetorno)}</span></div>
+      <div class="stat-row"><span class="stat-label">Retorno máximo</span>
+        <span class="stat-val pos">${fmt(s.maxRetorno)}</span></div>
+      <div class="stat-row"><span class="stat-label">Observaciones</span>
+        <span class="stat-val">${s.nObservaciones}</span></div>
+    </div>
+  `;
+        document.getElementById("statsGrid").innerHTML = statCard(data.statsA) + statCard(data.statsB);
+
+        // Gráfico
+        if (data.grafico_barras) {
+            document.getElementById("imgBarras").src = data.grafico_barras;
+            document.getElementById("chartPanel").style.display = "block";
+        }
+
+        document.getElementById("resultados").style.display = "block";
+        document.getElementById("resultados").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // ── Utilidades UI ────────────────────────────────────────────────────────────
+    function setStatus(msg, loading) {
+        const bar = document.getElementById("statusBar");
+        bar.innerHTML = loading
+            ? `<span class="dot-pulse"></span>${msg}`
+            : `<span style="color:var(--muted)">${msg}</span>`;
+    }
+
+    function mostrarError(msg) {
+        const box = document.getElementById("errorBox");
+        box.textContent = "⚠ " + msg;
+        box.style.display = "block";
+        setStatus("", false);
+    }
+</script>
+</body>
+</html>
