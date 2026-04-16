@@ -28,6 +28,7 @@ import time
 import requests
 import io
 import base64
+from flask import Flask, render_template
 
 import matplotlib
 matplotlib.use("Agg")
@@ -192,6 +193,10 @@ def generar_grafico_barras(datos: dict) -> str:
 def index():
     """Sirve el HTML principal de la interfaz."""
     return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "similitud.html")
+
+@app.route('/riesgo')
+def riesgo():
+    return render_template('analisis_riesgo.html')
 
 
 # ─── ARRANQUE ─────────────────────────────────────────────────────────────────

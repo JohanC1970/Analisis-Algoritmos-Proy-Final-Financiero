@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Análisis de Riesgo — Req. 4</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ── Variables ──────────────────────────────────────────────────── */
+    :root {
+      --bg:       #070d1a;
+      --surface:  #0f1c2e;
+      --card:     #132035;
+      --border:   #1e3a5f;
+      --accent:   #3b82f6;
+      --accent2:  #06b6d4;
+      --green:    #22c55e;
+      --amber:    #f59e0b;
+      --red:      #ef4444;
+      --purple:   #a855f7;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --mono:     'Space Mono', monospace;
+      --sans:     'DM Sans', sans-serif;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: var(--sans); min-height:100vh; overflow-x:hidden;
+    }
+    body::before {
+      content:''; position:fixed; inset:0;
+      background:
+        radial-gradient(ellipse 80% 50% at 20% 10%, rgba(59,130,246,.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 90%, rgba(6,182,212,.04) 0%, transparent 60%);
+      pointer-events:none; z-index:0;
+    }
+    .wrapper { position:relative; z-index:1; max-width:1200px; margin:0 auto; padding:2rem 1.5rem 5rem; }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    header {
+      display:flex; align-items:flex-end; gap:1.5rem;
+      border-bottom:1px solid var(--border);
+      padding-bottom:1.5rem; margin-bottom:2.5rem; flex-wrap:wrap;
+    }
+    .badge {
+      font-family:var(--mono); font-size:.65rem; font-weight:700;
+      letter-spacing:.15em; text-transform:uppercase;
+      color:var(--accent2); background:rgba(6,182,212,.08);
+      border:1px solid rgba(6,182,212,.25); border-radius:4px;
+      padding:.2rem .55rem; margin-bottom:.5rem; display:inline-block;
+    }
+    header h1 {
+      font-family:var(--mono); font-size:clamp(1.4rem,3vw,2rem);
+      color:var(--text); font-weight:700; line-height:1.1;
+    }
+    header p { color:var(--muted); font-size:.9rem; margin-top:.4rem; max-width:520px; }
+    .logo { margin-left:auto; font-family:var(--mono); font-size:.65rem; color:var(--muted); text-align:right; line-height:1.6; }
+    .logo strong { color:var(--accent); display:block; font-size:.8rem; }
+
+    /* ── Estado de carga ─────────────────────────────────────────────── */
+    #loadingState {
+      text-align:center; padding:5rem 2rem;
+      font-family:var(--mono); color:var(--muted); font-size:.9rem;
+    }
+    .spinner {
+      width:40px; height:40px; border:3px solid var(--border);
+      border-top-color:var(--accent); border-radius:50%;
+      animation:spin .8s linear infinite; margin:0 auto 1.5rem;
+    }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Error ───────────────────────────────────────────────────────── */
+    #errorState {
+      display:none; background:rgba(239,68,68,.08);
+      border:1px solid rgba(239,68,68,.25); border-radius:10px;
+      padding:1.5rem 2rem; color:#fca5a5; font-size:.9rem; line-height:1.7;
+    }
+    #errorState code { background:rgba(255,255,255,.07); padding:.15rem .4rem; border-radius:3px; font-family:var(--mono); font-size:.8rem; }
+
+    /* ── Sección principal ───────────────────────────────────────────── */
+    #mainContent { display:none; }
+
+    /* ── Tarjetas de resumen (KPI) ───────────────────────────────────── */
+    .kpi-grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px,1fr));
+      gap:1rem; margin-bottom:2rem;
+    }
+    .kpi-card {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:12px; padding:1.25rem 1.4rem;
+      position:relative; overflow:hidden;
+    }
+    .kpi-card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    }
+    .kpi-card.total::before   { background:var(--accent); }
+    .kpi-card.cons::before    { background:var(--green); }
+    .kpi-card.mod::before     { background:var(--amber); }
+    .kpi-card.agres::before   { background:var(--red); }
+    .kpi-card.vol-min::before { background:var(--accent2); }
+    .kpi-card.vol-max::before { background:var(--purple); }
+    .kpi-label {
+      font-family:var(--mono); font-size:.65rem; font-weight:700;
+      letter-spacing:.1em; text-transform:uppercase;
+      color:var(--muted); margin-bottom:.5rem;
+    }
+    .kpi-value {
+      font-family:var(--mono); font-size:1.9rem; font-weight:700;
+      line-height:1; color:var(--text);
+    }
+    .kpi-card.cons  .kpi-value { color:var(--green); }
+    .kpi-card.mod   .kpi-value { color:var(--amber); }
+    .kpi-card.agres .kpi-value { color:var(--red); }
+    .kpi-sub { font-size:.72rem; color:var(--muted); margin-top:.4rem; }
+
+    /* ── Barra de distribución de riesgo ─────────────────────────────── */
+    .dist-bar-wrap { margin-bottom:2rem; }
+    .dist-bar-label {
+      font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+      text-transform:uppercase; color:var(--muted); margin-bottom:.6rem;
+    }
+    .dist-bar {
+      display:flex; height:20px; border-radius:10px; overflow:hidden;
+      border:1px solid var(--border);
+    }
+    .dist-bar-seg { transition:width .5s ease; }
+    .dist-bar-seg.cons  { background:var(--green); }
+    .dist-bar-seg.mod   { background:var(--amber); }
+    .dist-bar-seg.agres { background:var(--red); }
+    .dist-legend {
+      display:flex; gap:1.5rem; margin-top:.6rem; flex-wrap:wrap;
+    }
+    .dist-legend-item {
+      display:flex; align-items:center; gap:.4rem;
+      font-size:.74rem; color:var(--muted);
+    }
+    .dist-dot { width:8px; height:8px; border-radius:50%; }
+
+    /* ── Sección de patrones ─────────────────────────────────────────── */
+    .section-title {
+      font-family:var(--mono); font-size:.7rem; font-weight:700;
+      letter-spacing:.12em; text-transform:uppercase;
+      color:var(--muted); margin-bottom:1rem;
+    }
+    .patron-grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:1rem;
+      margin-bottom:2rem;
+    }
+    @media(max-width:650px) { .patron-grid { grid-template-columns:1fr; } }
+    .patron-card {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:12px; padding:1.4rem;
+    }
+    .patron-card h3 {
+      font-family:var(--mono); font-size:.82rem; font-weight:700;
+      color:var(--accent2); margin-bottom:.5rem;
+    }
+    .patron-card .pat-desc { font-size:.8rem; color:var(--muted); line-height:1.5; margin-bottom:.75rem; }
+    .patron-card .pat-form {
+      font-family:var(--mono); font-size:.7rem; color:var(--accent);
+      background:rgba(59,130,246,.07); border:1px solid rgba(59,130,246,.15);
+      border-radius:6px; padding:.5rem .75rem; line-height:1.7;
+    }
+
+    /* ── Tabla de ranking ────────────────────────────────────────────── */
+    .table-wrap {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:14px; overflow:hidden; margin-bottom:2rem;
+    }
+    .table-header-bar {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:1rem 1.5rem; border-bottom:1px solid var(--border); flex-wrap:wrap; gap:.5rem;
+    }
+    .table-header-bar h2 {
+      font-family:var(--mono); font-size:.78rem; letter-spacing:.1em;
+      text-transform:uppercase; color:var(--accent);
+    }
+    .filter-btns { display:flex; gap:.5rem; }
+    .filter-btn {
+      font-family:var(--mono); font-size:.68rem; font-weight:700;
+      padding:.3rem .8rem; border-radius:6px; border:1px solid var(--border);
+      cursor:pointer; background:transparent; color:var(--muted);
+      transition:all .15s;
+    }
+    .filter-btn.active, .filter-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .filter-btn.cons.active  { border-color:var(--green); color:var(--green); }
+    .filter-btn.mod.active   { border-color:var(--amber); color:var(--amber); }
+    .filter-btn.agres.active { border-color:var(--red);   color:var(--red); }
+
+    table { width:100%; border-collapse:collapse; }
+    thead tr { background:rgba(30,58,95,.4); }
+    th {
+      font-family:var(--mono); font-size:.65rem; font-weight:700;
+      letter-spacing:.08em; text-transform:uppercase;
+      color:var(--muted); padding:.75rem 1rem; text-align:left;
+      white-space:nowrap;
+    }
+    th.sortable { cursor:pointer; user-select:none; }
+    th.sortable:hover { color:var(--accent); }
+    tbody tr {
+      border-bottom:1px solid rgba(30,58,95,.5);
+      transition:background .1s;
+      cursor:pointer;
+    }
+    tbody tr:last-child { border-bottom:none; }
+    tbody tr:hover { background:rgba(59,130,246,.04); }
+    td {
+      padding:.75rem 1rem; font-size:.83rem; color:var(--text);
+      vertical-align:middle;
+    }
+    .rank-num {
+      font-family:var(--mono); font-size:.7rem; color:var(--muted);
+      width:2rem; text-align:center;
+    }
+    .ticker-cell {
+      font-family:var(--mono); font-size:.9rem; font-weight:700;
+      color:var(--text);
+    }
+    .cat-badge {
+      display:inline-block; font-family:var(--mono); font-size:.65rem;
+      font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+      padding:.22rem .7rem; border-radius:6px;
+    }
+    .cat-badge.CONSERVADOR { background:rgba(34,197,94,.12); color:#22c55e; border:1px solid rgba(34,197,94,.25); }
+    .cat-badge.MODERADO    { background:rgba(245,158,11,.12); color:#f59e0b; border:1px solid rgba(245,158,11,.25); }
+    .cat-badge.AGRESIVO    { background:rgba(239,68,68,.12);  color:#ef4444; border:1px solid rgba(239,68,68,.25); }
+    .num-cell  { font-family:var(--mono); font-size:.8rem; }
+    .pos-val   { color:var(--green); }
+    .neg-val   { color:var(--red); }
+    .bar-cell  { min-width:80px; }
+    .mini-bar  { height:5px; border-radius:3px; background:var(--border); overflow:hidden; }
+    .mini-bar-fill { height:100%; border-radius:3px; transition:width .4s; }
+
+    /* ── Panel de detalle (drawer) ───────────────────────────────────── */
+    #detailPanel {
+      display:none; background:var(--surface); border:1px solid var(--accent);
+      border-radius:14px; padding:2rem; margin-bottom:2rem;
+    }
+    #detailPanel h2 {
+      font-family:var(--mono); font-size:1.1rem; font-weight:700;
+      color:var(--text); margin-bottom:1.5rem;
+      display:flex; align-items:center; gap:.75rem; flex-wrap:wrap;
+    }
+    .detail-grid {
+      display:grid; grid-template-columns:1fr 1fr; gap:1rem;
+      margin-bottom:1.5rem;
+    }
+    @media(max-width:600px) { .detail-grid { grid-template-columns:1fr; } }
+    .detail-block {
+      background:var(--card); border:1px solid var(--border);
+      border-radius:10px; padding:1.25rem;
+    }
+    .detail-block h4 {
+      font-family:var(--mono); font-size:.68rem; letter-spacing:.1em;
+      text-transform:uppercase; color:var(--muted); margin-bottom:.9rem;
+    }
+    .stat-row {
+      display:flex; justify-content:space-between; align-items:center;
+      padding:.35rem 0; border-bottom:1px solid rgba(30,58,95,.5);
+      font-size:.8rem;
+    }
+    .stat-row:last-child { border-bottom:none; }
+    .stat-label { color:var(--muted); }
+    .stat-val   { font-family:var(--mono); font-size:.8rem; color:var(--text); }
+    .pattern-results { display:flex; flex-direction:column; gap:.75rem; }
+    .pat-result {
+      background:var(--surface); border:1px solid var(--border);
+      border-radius:8px; padding:1rem;
+    }
+    .pat-result-name {
+      font-family:var(--mono); font-size:.72rem; font-weight:700;
+      color:var(--accent2); margin-bottom:.5rem;
+    }
+    .freq-bar { height:6px; border-radius:3px; background:var(--border); margin:.4rem 0; }
+    .freq-fill { height:100%; border-radius:3px; background:var(--accent); }
+    .freq-label { font-family:var(--mono); font-size:.68rem; color:var(--muted); }
+    .btn-close {
+      background:transparent; border:1px solid var(--border);
+      color:var(--muted); border-radius:6px; padding:.3rem .8rem;
+      font-family:var(--mono); font-size:.7rem; cursor:pointer;
+      margin-top:1rem; transition:all .15s;
+    }
+    .btn-close:hover { border-color:var(--red); color:var(--red); }
+    
+    /* ── Navegación ── */
+    .btn-nav {
+      background: rgba(6, 182, 212, 0.1);
+      color: var(--accent2);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      border-radius: 8px;
+      padding: 0.6rem 1.2rem;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .btn-nav:hover {
+      background: rgba(6, 182, 212, 0.2);
+      border-color: var(--accent2);
+      transform: translateY(-2px);
+      color: var(--accent2);
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER ──────────────────────────────────────────────────────────── -->
+  <header>
+    <div>
+      <div class="badge">Requerimiento 4</div>
+      <h1>Análisis de Frecuencia de Patrones<br>y Clasificación de Riesgo</h1>
+      <p>
+        Ventana deslizante (20 días) · Dos patrones formalizados ·
+        Desviación estándar y volatilidad histórica anualizada ·
+        Ranking de activos por nivel de riesgo.
+      </p>
+    </div>
+    <div style="margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1.2rem;">
+      <div class="logo">
+        <strong>UniQuindío</strong>
+        Análisis de Algoritmos<br>
+        Ing. Sistemas · 2026·1
+      </div>
+      <a href="/" class="btn-nav">← Volver a Similitud (Req. 3)</a>
+    </div>
+  </header>
+
+  <!-- ESTADO CARGANDO ─────────────────────────────────────────────────── -->
+  <div id="loadingState">
+    <div class="spinner"></div>
+    Conectando con el servidor Java en <code>localhost:8000</code>…
+  </div>
+
+  <!-- ERROR ──────────────────────────────────────────────────────────── -->
+  <div id="errorState">
+    <strong>⚠ No se pudo conectar con el servidor Java</strong><br><br>
+    Asegúrate de que <code>MainAnalisisRiesgo.java</code> esté en ejecución:<br><br>
+    <code>mvn compile exec:java -Dexec.mainClass="MainAnalisisRiesgo"</code><br><br>
+    El servidor debe estar en <code>http://localhost:8000</code> antes de abrir este archivo.
+  </div>
+
+  <!-- CONTENIDO PRINCIPAL ─────────────────────────────────────────────── -->
+  <div id="mainContent">
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid" id="kpiGrid"></div>
+
+    <!-- Barra de distribución -->
+    <div class="dist-bar-wrap">
+      <div class="dist-bar-label">// Distribución del portafolio por categoría de riesgo</div>
+      <div class="dist-bar" id="distBar"></div>
+      <div class="dist-legend" id="distLegend"></div>
+    </div>
+
+    <!-- Patrones definidos -->
+    <p class="section-title">// Patrones detectados por ventana deslizante</p>
+    <div class="patron-grid">
+      <div class="patron-card">
+        <h3>Patrón 1 · Racha Alcista (≥3 días)</h3>
+        <p class="pat-desc">
+          Detecta ventanas de 20 días donde el precio de cierre sube durante
+          3 o más días consecutivos, indicando <strong>momentum alcista sostenido</strong>.
+        </p>
+        <div class="pat-form">
+          ∃i : close[i+j] &gt; close[i+j−1]<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;∀j ∈ {1, …, 2}  (longitud ≥ 3)
+        </div>
+      </div>
+      <div class="patron-card">
+        <h3>Patrón 2 · Compresión de Rango (≥30%)</h3>
+        <p class="pat-desc">
+          Detecta ventanas donde el rango intradiario promedio
+          <strong>(high−low)/close</strong> de la segunda mitad cae al menos un 30%
+          respecto a la primera. Señala <strong>consolidación previa a un breakout</strong>.
+        </p>
+        <div class="pat-form">
+          RDP(H2) &lt; 0.70 × RDP(H1)<br>
+          RDP(S) = (1/|S|) × Σ [(high−low)/close]
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel de detalle del activo seleccionado -->
+    <div id="detailPanel">
+      <h2 id="detailTitle"></h2>
+      <div class="detail-grid" id="detailGrid"></div>
+      <button class="btn-close" onclick="cerrarDetalle()">✕ Cerrar detalle</button>
+    </div>
+
+    <!-- Tabla de ranking -->
+    <div class="table-wrap">
+      <div class="table-header-bar">
+        <h2>// Ranking de activos por nivel de riesgo (menor → mayor)</h2>
+        <div class="filter-btns">
+          <button class="filter-btn active" onclick="filtrar('TODOS', this)">Todos</button>
+          <button class="filter-btn cons"   onclick="filtrar('CONSERVADOR', this)">Conservador</button>
+          <button class="filter-btn mod"    onclick="filtrar('MODERADO', this)">Moderado</button>
+          <button class="filter-btn agres"  onclick="filtrar('AGRESIVO', this)">Agresivo</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Ticker</th>
+              <th>Categoría</th>
+              <th class="sortable" onclick="ordenarPor('volatilidadAnual')">Vol. Anual ↕</th>
+              <th class="sortable" onclick="ordenarPor('desviacionEstandar')">σ Diaria ↕</th>
+              <th class="sortable" onclick="ordenarPor('mediaRetornoDiario')">Retorno Medio ↕</th>
+              <th>Retorno Mín.</th>
+              <th>Retorno Máx.</th>
+              <th class="sortable" onclick="ordenarPor('sharpeAproximado')">Sharpe ↕</th>
+              <th>Patrón 1 %</th>
+              <th>Patrón 2 %</th>
+              <th>Días</th>
+            </tr>
+          </thead>
+          <tbody id="tablaBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Leyenda metodológica -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem 2rem;">
+      <p class="section-title" style="margin-bottom:.75rem">// Metodología</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;font-size:.8rem;color:var(--muted);line-height:1.7;">
+        <div>
+          <strong style="color:var(--text);font-family:var(--mono)">Retorno diario</strong><br>
+          r<sub>t</sub> = (close<sub>t</sub> − close<sub>t−1</sub>) / close<sub>t−1</sub>
+        </div>
+        <div>
+          <strong style="color:var(--text);font-family:var(--mono)">Desv. estándar (σ)</strong><br>
+          σ = √[ (1/n) × Σ(r<sub>t</sub> − μ)² ] &nbsp;(varianza poblacional)
+        </div>
+        <div>
+          <strong style="color:var(--text);font-family:var(--mono)">Volatilidad anual</strong><br>
+          σ<sub>a</sub> = σ × √252 &nbsp;(252 días hábiles/año)
+        </div>
+        <div>
+          <strong style="color:var(--text);font-family:var(--mono)">Sharpe aproximado</strong><br>
+          Sharpe = (μ × 252) / σ<sub>a</sub> &nbsp;(sin tasa libre de riesgo)
+        </div>
+        <div>
+          <strong style="color:var(--text);font-family:var(--mono)">Ventana deslizante</strong><br>
+          Tamaño w = 20 días · Total ventanas = n − w + 1
+        </div>
+        <div>
+          <strong style="color:var(--text);font-family:var(--mono)">Umbrales de riesgo</strong><br>
+          Conservador: σ<sub>a</sub> &lt; 15% · Moderado: 15–30% · Agresivo: ≥ 30%
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /mainContent -->
+</div><!-- /wrapper -->
+
+<script>
+// ── Estado global ─────────────────────────────────────────────────────────
+let todosActivos = [];
+let filtroActivo = 'TODOS';
+let maxVol       = 1;
+
+// ── Carga inicial ─────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const r = await fetch('http://localhost:8000/riesgo');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+
+    todosActivos = data.activos || [];
+    maxVol = Math.max(...todosActivos.map(a => a.volatilidadAnual), 0.01);
+
+    renderKPI(data.resumen);
+    renderDistBar(data.resumen);
+    renderTabla(todosActivos);
+
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('mainContent').style.display  = 'block';
+
+  } catch (e) {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').style.display   = 'block';
+  }
+});
+
+// ── KPI Cards ─────────────────────────────────────────────────────────────
+function renderKPI(r) {
+  const fmt = v => (v * 100).toFixed(1) + '%';
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card total">
+      <div class="kpi-label">Total activos</div>
+      <div class="kpi-value">${r.totalActivos}</div>
+      <div class="kpi-sub">Portafolio analizado</div>
+    </div>
+    <div class="kpi-card cons">
+      <div class="kpi-label">Conservadores</div>
+      <div class="kpi-value">${r.conservadores}</div>
+      <div class="kpi-sub">vol. anual &lt; 15%</div>
+    </div>
+    <div class="kpi-card mod">
+      <div class="kpi-label">Moderados</div>
+      <div class="kpi-value">${r.moderados}</div>
+      <div class="kpi-sub">15% ≤ vol. &lt; 30%</div>
+    </div>
+    <div class="kpi-card agres">
+      <div class="kpi-label">Agresivos</div>
+      <div class="kpi-value">${r.agresivos}</div>
+      <div class="kpi-sub">vol. anual ≥ 30%</div>
+    </div>
+    <div class="kpi-card vol-min">
+      <div class="kpi-label">Vol. mínima</div>
+      <div class="kpi-value" style="font-size:1.4rem">${fmt(r.volatilidadMinima)}</div>
+      <div class="kpi-sub">Activo más conservador</div>
+    </div>
+    <div class="kpi-card vol-max">
+      <div class="kpi-label">Vol. máxima</div>
+      <div class="kpi-value" style="font-size:1.4rem;color:var(--red)">${fmt(r.volatilidadMaxima)}</div>
+      <div class="kpi-sub">Activo más agresivo</div>
+    </div>
+  `;
+}
+
+// ── Barra de distribución ─────────────────────────────────────────────────
+function renderDistBar(r) {
+  document.getElementById('distBar').innerHTML = `
+    <div class="dist-bar-seg cons" style="width:${r.pctConservadores}%"></div>
+    <div class="dist-bar-seg mod"  style="width:${r.pctModerados}%"></div>
+    <div class="dist-bar-seg agres" style="width:${r.pctAgresivos}%"></div>
+  `;
+  document.getElementById('distLegend').innerHTML = `
+    <div class="dist-legend-item"><div class="dist-dot" style="background:#22c55e"></div>Conservador ${r.conservadores} (${r.pctConservadores.toFixed(0)}%)</div>
+    <div class="dist-legend-item"><div class="dist-dot" style="background:#f59e0b"></div>Moderado ${r.moderados} (${r.pctModerados.toFixed(0)}%)</div>
+    <div class="dist-legend-item"><div class="dist-dot" style="background:#ef4444"></div>Agresivo ${r.agresivos} (${r.pctAgresivos.toFixed(0)}%)</div>
+    <div class="dist-legend-item" style="margin-left:auto"><div class="dist-dot" style="background:var(--accent2)"></div>Ventana: ${r.tamanoVentana} días</div>
+  `;
+}
+
+// ── Tabla de ranking ──────────────────────────────────────────────────────
+function renderTabla(activos) {
+  const lista = filtroActivo === 'TODOS'
+    ? activos
+    : activos.filter(a => categoriaKey(a) === filtroActivo);
+
+  const fmtPct  = v => (v * 100).toFixed(2) + '%';
+  const fmtPct1 = v => (v * 100).toFixed(1) + '%';
+  const cls     = v => v >= 0 ? 'pos-val' : 'neg-val';
+
+  document.getElementById('tablaBody').innerHTML = lista.map((a, i) => {
+    const key   = categoriaKey(a);
+    const p1    = a.patrones && a.patrones[0] ? a.patrones[0].frecuenciaPct : 0;
+    const p2    = a.patrones && a.patrones[1] ? a.patrones[1].frecuenciaPct : 0;
+    const barW  = ((a.volatilidadAnual / maxVol) * 100).toFixed(1);
+    const bColor = key === 'CONSERVADOR' ? '#22c55e' : key === 'MODERADO' ? '#f59e0b' : '#ef4444';
+    return `
+      <tr onclick="mostrarDetalle('${a.ticker}')">
+        <td class="rank-num">${i + 1}</td>
+        <td class="ticker-cell">${a.ticker}</td>
+        <td><span class="cat-badge ${key}">${a.categoriaNombre}</span></td>
+        <td>
+          <div class="num-cell">${fmtPct(a.volatilidadAnual)}</div>
+          <div class="bar-cell"><div class="mini-bar"><div class="mini-bar-fill" style="width:${barW}%;background:${bColor}"></div></div></div>
+        </td>
+        <td class="num-cell">${a.desviacionEstandar.toFixed(4)}</td>
+        <td class="num-cell ${cls(a.mediaRetornoDiario)}">${fmtPct(a.mediaRetornoDiario)}</td>
+        <td class="num-cell neg-val">${fmtPct(a.retornoMinimo)}</td>
+        <td class="num-cell pos-val">${fmtPct(a.retornoMaximo)}</td>
+        <td class="num-cell ${cls(a.sharpeAproximado)}">${a.sharpeAproximado.toFixed(2)}</td>
+        <td class="num-cell">${p1.toFixed(1)}%</td>
+        <td class="num-cell">${p2.toFixed(1)}%</td>
+        <td class="num-cell" style="color:var(--muted)">${a.nDias}</td>
+      </tr>`;
+  }).join('');
+}
+
+// ── Panel de detalle ──────────────────────────────────────────────────────
+function mostrarDetalle(ticker) {
+  const a = todosActivos.find(x => x.ticker === ticker);
+  if (!a) return;
+
+  const key  = categoriaKey(a);
+  const fmt  = v => (v * 100).toFixed(3) + '%';
+  const fmt2 = v => (v * 100).toFixed(1) + '%';
+  const cls  = v => v >= 0 ? 'pos-val' : 'neg-val';
+
+  document.getElementById('detailTitle').innerHTML =
+    `${a.ticker} <span class="cat-badge ${key}">${a.categoriaNombre}</span>
+     <span style="font-size:.75rem;color:var(--muted);font-weight:400">
+       — Vol. anual: ${fmt2(a.volatilidadAnual)}
+     </span>`;
+
+  document.getElementById('detailGrid').innerHTML = `
+    <div class="detail-block">
+      <h4>Estadísticas de dispersión</h4>
+      <div class="stat-row"><span class="stat-label">Retorno medio diario</span>
+        <span class="stat-val ${cls(a.mediaRetornoDiario)}">${fmt(a.mediaRetornoDiario)}</span></div>
+      <div class="stat-row"><span class="stat-label">Desv. estándar (σ_d)</span>
+        <span class="stat-val">${a.desviacionEstandar.toFixed(5)}</span></div>
+      <div class="stat-row"><span class="stat-label">Volatilidad anual (σ_a)</span>
+        <span class="stat-val">${fmt2(a.volatilidadAnual)}</span></div>
+      <div class="stat-row"><span class="stat-label">Retorno mínimo (peor día)</span>
+        <span class="stat-val neg-val">${fmt(a.retornoMinimo)}</span></div>
+      <div class="stat-row"><span class="stat-label">Retorno máximo (mejor día)</span>
+        <span class="stat-val pos-val">${fmt(a.retornoMaximo)}</span></div>
+      <div class="stat-row"><span class="stat-label">Sharpe aprox. (sin Rf)</span>
+        <span class="stat-val ${cls(a.sharpeAproximado)}">${a.sharpeAproximado.toFixed(3)}</span></div>
+      <div class="stat-row"><span class="stat-label">Días analizados</span>
+        <span class="stat-val">${a.nDias}</span></div>
+    </div>
+    <div class="detail-block">
+      <h4>Análisis de patrones — ventana 20 días</h4>
+      <div class="pattern-results">
+        ${(a.patrones || []).map(p => `
+          <div class="pat-result">
+            <div class="pat-result-name">${p.nombrePatron}</div>
+            <div class="freq-bar"><div class="freq-fill" style="width:${Math.min(p.frecuenciaPct,100)}%"></div></div>
+            <div class="freq-label">
+              ${p.frecuenciaPct.toFixed(1)}% de ventanas contienen este patrón
+              (${p.ventanasConPatron} / ${p.ventanasAnalizadas})
+            </div>
+            <div style="font-size:.72rem;color:var(--muted);margin-top:.4rem;line-height:1.5">
+              ${p.descripcion}
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+  `;
+
+  const panel = document.getElementById('detailPanel');
+  panel.style.display = 'block';
+  panel.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function cerrarDetalle() {
+  document.getElementById('detailPanel').style.display = 'none';
+}
+
+// ── Filtros ───────────────────────────────────────────────────────────────
+function filtrar(cat, btn) {
+  filtroActivo = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTabla(todosActivos);
+}
+
+// ── Ordenamiento de columnas ──────────────────────────────────────────────
+let sortField = 'volatilidadAnual';
+let sortAsc   = true;
+function ordenarPor(campo) {
+  if (sortField === campo) { sortAsc = !sortAsc; }
+  else { sortField = campo; sortAsc = true; }
+  const sorted = [...todosActivos].sort((a, b) => {
+    const va = a[campo] ?? 0;
+    const vb = b[campo] ?? 0;
+    return sortAsc ? va - vb : vb - va;
+  });
+  renderTabla(sorted);
+}
+
+// ── Utilidad ──────────────────────────────────────────────────────────────
+function categoriaKey(a) {
+  const v = a.volatilidadAnual;
+  if (v < 0.15) return 'CONSERVADOR';
+  if (v < 0.30) return 'MODERADO';
+  return 'AGRESIVO';
+}
+</script>
+</body>
+</html>

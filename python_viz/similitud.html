@@ -286,6 +286,29 @@
             color: #fca5a5; font-size: 0.88rem;
             display: none;
         }
+
+        /* ── Navegación ── */
+        .btn-nav {
+            background: rgba(6, 182, 212, 0.1);
+            color: var(--accent2);
+            border: 1px solid rgba(6, 182, 212, 0.3);
+            border-radius: 8px;
+            padding: 0.6rem 1.2rem;
+            font-family: var(--mono);
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .btn-nav:hover {
+            background: rgba(6, 182, 212, 0.2);
+            border-color: var(--accent2);
+            transform: translateY(-2px);
+            color: var(--accent2);
+        }
     </style>
 </head>
 <body>
@@ -298,10 +321,13 @@
             <h1>Análisis de Similitud<br>de Series de Tiempo</h1>
             <p>Cuatro algoritmos implementados en Java comparan los retornos diarios de dos activos financieros.</p>
         </div>
-        <div class="uniq-logo">
-            <strong>UniQuindío</strong>
-            Análisis de Algoritmos<br>
-            Ing. Sistemas · 2026·1
+        <div style="margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 1.2rem;">
+            <div class="uniq-logo">
+                <strong>UniQuindío</strong>
+                Análisis de Algoritmos<br>
+                Ing. Sistemas · 2026·1
+            </div>
+            <a href="/riesgo" class="btn-nav">Análisis de Riesgo (Req. 4) →</a>
         </div>
     </header>
 
