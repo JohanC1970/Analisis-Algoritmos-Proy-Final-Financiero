@@ -23,12 +23,25 @@ public class SimilitudService {
     private final Map<String, TreeMap<LocalDate, Double>> retornosPorActivo;
 
     /*
+     * Mapa de registros OHLC originales: ticker -> (fecha -> RegistroFinanciero).
+     * Necesario para el endpoint /ohlc que devuelve datos completos de velas.
+     */
+    private final Map<String, TreeMap<LocalDate, RegistroFinanciero>> registrosPorActivo;
+
+    /*
      * Lista de todos los tickers disponibles para mostrar en el selector de la UI.
      */
     private final List<String> tickersDisponibles;
 
+    /*
+     * Caché de la matriz de correlación completa.
+     * Se calcula UNA SOLA VEZ en el constructor y se reutiliza en cada petición.
+     */
+    private final ResultadoCorrelacion correlacionCache;
+
     /**
-     * Constructor: indexa todos los registros y calcula los retornos diarios.
+     * Constructor: indexa todos los registros, calcula retornos y pre-computa
+     * la matriz de correlación completa (cacheada para el endpoint /correlacion).
      *
      * @param registros Lista maestra con todos los RegistroFinanciero del ETL.
      */
@@ -40,10 +53,21 @@ public class SimilitudService {
                 new CosineSimilarity()
         );
 
-        this.retornosPorActivo = new HashMap<>();
+        this.retornosPorActivo  = new HashMap<>();
+        this.registrosPorActivo = new HashMap<>();
         this.tickersDisponibles = new ArrayList<>();
 
         construirRetornosPorActivo(registros);
+
+        // Pre-calcular la matriz de correlación completa al arrancar el servicio.
+        // Esto puede tomar varios segundos, pero solo ocurre UNA VEZ en toda la vida
+        // del proceso. Las peticiones posteriores a /correlacion son instantáneas.
+        System.out.println("[SimilitudService] Pre-calculando matriz de correlación completa...");
+        long t0 = System.currentTimeMillis();
+        this.correlacionCache = calcularCorrelacionCompleta();
+        System.out.printf("[SimilitudService] Matriz %dx%d calculada en %d ms.%n",
+                tickersDisponibles.size(), tickersDisponibles.size(),
+                System.currentTimeMillis() - t0);
     }
 
     /**
@@ -58,13 +82,19 @@ public class SimilitudService {
      */
     private void construirRetornosPorActivo(List<RegistroFinanciero> registros) {
 
-        // PASO 1: Agrupar precios de cierre por ticker, ordenados por fecha.
+        // PASO 1: Agrupar registros por ticker, ordenados por fecha.
+        // En paralelo se construyen:
+        //   - preciosPorActivo: solo el close, para calcular retornos.
+        //   - registrosPorActivo: el RegistroFinanciero completo, para el endpoint OHLC.
         Map<String, TreeMap<LocalDate, Double>> preciosPorActivo = new HashMap<>();
 
         for (RegistroFinanciero r : registros) {
             preciosPorActivo
                     .computeIfAbsent(r.getActivo(), k -> new TreeMap<>())
                     .put(r.getFecha(), r.getClose());
+            registrosPorActivo
+                    .computeIfAbsent(r.getActivo(), k -> new TreeMap<>())
+                    .put(r.getFecha(), r);
         }
 
         // PASO 2: Para cada ticker, calcular los retornos diarios.
@@ -252,6 +282,98 @@ public class SimilitudService {
         return Collections.unmodifiableList(tickersDisponibles);
     }
 
+    /**
+     * Devuelve la matriz de correlación completa pre-calculada.
+     * El cálculo ya se hizo en el constructor; esta llamada es O(1).
+     *
+     * @return ResultadoCorrelacion con la lista de tickers y la matriz NxN.
+     */
+    public ResultadoCorrelacion getCorrelacionCompleta() {
+        return correlacionCache;
+    }
+
+    /**
+     * Devuelve los últimos {@code dias} días de datos OHLC de un ticker,
+     * ordenados cronológicamente (más antiguo primero).
+     *
+     * @param ticker Símbolo del activo (ej: "AAPL"). Se normaliza a mayúsculas.
+     * @param dias   Número de días a devolver. Si el activo tiene menos días,
+     *               se devuelven todos los disponibles.
+     * @return ResultadoOHLC con el ticker y la lista de DatoOHLC, o null si
+     *         el ticker no existe en el dataset.
+     */
+    public ResultadoOHLC getOHLC(String ticker, int dias) {
+        String t = ticker.toUpperCase().trim();
+        TreeMap<LocalDate, RegistroFinanciero> registros = registrosPorActivo.get(t);
+        if (registros == null) return null;
+
+        // TreeMap.values() ya está en orden cronológico ascendente (LocalDate natural).
+        List<RegistroFinanciero> todos = new ArrayList<>(registros.values());
+        int inicio = Math.max(0, todos.size() - dias);
+        List<RegistroFinanciero> sublista = todos.subList(inicio, todos.size());
+
+        List<DatoOHLC> datos = new ArrayList<>(sublista.size());
+        for (RegistroFinanciero r : sublista) {
+            datos.add(new DatoOHLC(
+                    r.getFecha().toString(),   // "YYYY-MM-DD"
+                    r.getOpen(),
+                    r.getHigh(),
+                    r.getLow(),
+                    r.getClose(),
+                    r.getVolumen()
+            ));
+        }
+
+        return new ResultadoOHLC(t, datos);
+    }
+
+    /**
+     * Calcula la matriz de correlación de Pearson entre todos los pares de activos.
+     *
+     * La diagonal es siempre 1.0. La matriz es simétrica: corr(A,B) == corr(B,A).
+     * Solo se calcula el triángulo superior y se copia al inferior.
+     *
+     * Complejidad: O(n² × m) donde n = número de tickers, m = días comunes promedio.
+     * Con 20 tickers y ~500 días: ~190 pares × 500 ops = ~95 000 operaciones → < 1 s.
+     *
+     * @return ResultadoCorrelacion listo para serializar a JSON.
+     */
+    private ResultadoCorrelacion calcularCorrelacionCompleta() {
+        PearsonCorrelation pearson = new PearsonCorrelation();
+        String[] tickers = tickersDisponibles.toArray(new String[0]);
+        int n = tickers.length;
+        double[][] matriz = new double[n][n];
+
+        for (int i = 0; i < n; i++) {
+            for (int j = i; j < n; j++) {
+                if (i == j) {
+                    matriz[i][j] = 1.0;
+                    continue;
+                }
+
+                TreeMap<LocalDate, Double> retA = retornosPorActivo.get(tickers[i]);
+                TreeMap<LocalDate, Double> retB = retornosPorActivo.get(tickers[j]);
+
+                // Intersección de fechas para alinear las series.
+                Set<LocalDate> fechasComunes = new TreeSet<>(retA.keySet());
+                fechasComunes.retainAll(retB.keySet());
+
+                List<Double> serieA = new ArrayList<>(fechasComunes.size());
+                List<Double> serieB = new ArrayList<>(fechasComunes.size());
+                for (LocalDate f : fechasComunes) {
+                    serieA.add(retA.get(f));
+                    serieB.add(retB.get(f));
+                }
+
+                double corr = serieA.isEmpty() ? Double.NaN : pearson.calcular(serieA, serieB);
+                matriz[i][j] = corr;
+                matriz[j][i] = corr;  // Simetría
+            }
+        }
+
+        return new ResultadoCorrelacion(tickers, matriz);
+    }
+
     // ─── CLASES DE DATOS INTERNAS ────────────────────────────────────────────────
 
     /**
@@ -319,6 +441,55 @@ public class SimilitudService {
             this.resultados = resultados;
             this.statsA     = statsA;
             this.statsB     = statsB;
+        }
+    }
+
+    /**
+     * Un día de datos OHLC para el endpoint /ohlc.
+     */
+    public static class DatoOHLC {
+        public final String fecha;
+        public final double open;
+        public final double high;
+        public final double low;
+        public final double close;
+        public final long   volumen;
+
+        public DatoOHLC(String fecha, double open, double high,
+                        double low, double close, long volumen) {
+            this.fecha   = fecha;
+            this.open    = open;
+            this.high    = high;
+            this.low     = low;
+            this.close   = close;
+            this.volumen = volumen;
+        }
+    }
+
+    /**
+     * Respuesta del endpoint /ohlc: ticker + lista de velas ordenadas por fecha.
+     */
+    public static class ResultadoOHLC {
+        public final String         ticker;
+        public final List<DatoOHLC> datos;
+
+        public ResultadoOHLC(String ticker, List<DatoOHLC> datos) {
+            this.ticker = ticker;
+            this.datos  = datos;
+        }
+    }
+
+    /**
+     * Respuesta del endpoint /correlacion: lista de tickers y matriz NxN.
+     * La diagonal vale 1.0 y la matriz es simétrica.
+     */
+    public static class ResultadoCorrelacion {
+        public final String[]   tickers;
+        public final double[][] matriz;
+
+        public ResultadoCorrelacion(String[] tickers, double[][] matriz) {
+            this.tickers = tickers;
+            this.matriz  = matriz;
         }
     }
 

@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 /*
  * SimilitudServer.java - Servidor HTTP embebido que expone el Requerimiento 3 como API REST.
@@ -64,10 +65,12 @@ public class SimilitudServer {
         // Creamos el servidor en el puerto 8080 con una cola de hasta 10 conexiones pendientes.
         this.servidor = HttpServer.create(new InetSocketAddress(PUERTO), 10);
 
-        // Registramos los tres endpoints.
-        servidor.createContext("/tickers",   this::handleTickers);
-        servidor.createContext("/similitud", this::handleSimilitud);
-        servidor.createContext("/health",    this::handleHealth);
+        // Registramos los cinco endpoints.
+        servidor.createContext("/tickers",     this::handleTickers);
+        servidor.createContext("/similitud",   this::handleSimilitud);
+        servidor.createContext("/health",      this::handleHealth);
+        servidor.createContext("/correlacion", this::handleCorrelacion);
+        servidor.createContext("/ohlc",        this::handleOhlc);
 
         // Executor null = usa el hilo actual (suficiente para las pocas peticiones esperadas).
         servidor.setExecutor(null);
@@ -83,6 +86,8 @@ public class SimilitudServer {
         System.out.println("  GET http://localhost:" + PUERTO + "/health");
         System.out.println("  GET http://localhost:" + PUERTO + "/tickers");
         System.out.println("  GET http://localhost:" + PUERTO + "/similitud?a=TICKER1&b=TICKER2");
+        System.out.println("  GET http://localhost:" + PUERTO + "/correlacion");
+        System.out.println("  GET http://localhost:" + PUERTO + "/ohlc?ticker=AAPL&dias=180");
     }
 
     /**
@@ -180,6 +185,80 @@ public class SimilitudServer {
         }
 
         // Serializamos el resultado completo a JSON con Gson.
+        enviarJson(exchange, 200, gson.toJson(resultado));
+    }
+
+    /**
+     * GET /correlacion
+     * Devuelve la matriz de correlación de Pearson entre todos los activos.
+     * El cálculo ya está pre-computado en SimilitudService; esta llamada es O(1).
+     *
+     * Respuesta: { "tickers": [...], "matriz": [[1.0, ...], ...] }
+     */
+    private void handleCorrelacion(HttpExchange exchange) throws IOException {
+        if (!"GET".equals(exchange.getRequestMethod())) {
+            enviarJson(exchange, 405, "{\"error\":\"Método no permitido\"}");
+            return;
+        }
+
+        SimilitudService.ResultadoCorrelacion resultado = servicio.getCorrelacionCompleta();
+        if (resultado == null) {
+            enviarJson(exchange, 503, "{\"error\":\"Matriz de correlación no disponible\"}");
+            return;
+        }
+
+        System.out.println("[SimilitudServer] /correlacion → " + resultado.tickers.length + " tickers");
+        enviarJson(exchange, 200, gson.toJson(resultado));
+    }
+
+    /**
+     * GET /ohlc?ticker=AAPL&dias=180
+     * Devuelve los últimos N días de datos OHLC del ticker indicado.
+     * El parámetro {@code dias} es opcional (default 180).
+     *
+     * Respuesta: { "ticker": "AAPL", "datos": [{fecha, open, high, low, close, volumen}, ...] }
+     */
+    private void handleOhlc(HttpExchange exchange) throws IOException {
+        if (!"GET".equals(exchange.getRequestMethod())) {
+            enviarJson(exchange, 405, "{\"error\":\"Método no permitido\"}");
+            return;
+        }
+
+        URI uri   = exchange.getRequestURI();
+        String qs = uri.getQuery();
+
+        String ticker = null;
+        int    dias   = 180;
+
+        if (qs != null) {
+            for (String par : qs.split("&")) {
+                String[] kv = par.split("=", 2);
+                if (kv.length != 2) continue;
+                switch (kv[0]) {
+                    case "ticker": ticker = kv[1].toUpperCase().trim(); break;
+                    case "dias":
+                        try { dias = Integer.parseInt(kv[1].trim()); }
+                        catch (NumberFormatException ignored) {}
+                        break;
+                }
+            }
+        }
+
+        if (ticker == null || ticker.isEmpty()) {
+            enviarJson(exchange, 400, "{\"error\":\"Parámetro 'ticker' requerido\"}");
+            return;
+        }
+
+        SimilitudService.ResultadoOHLC resultado = servicio.getOHLC(ticker, dias);
+        if (resultado == null) {
+            Map<String, String> err = new HashMap<>();
+            err.put("error", "Ticker no encontrado: " + ticker);
+            enviarJson(exchange, 404, gson.toJson(err));
+            return;
+        }
+
+        System.out.printf("[SimilitudServer] /ohlc?ticker=%s&dias=%d → %d registros%n",
+                ticker, dias, resultado.datos.size());
         enviarJson(exchange, 200, gson.toJson(resultado));
     }
 
