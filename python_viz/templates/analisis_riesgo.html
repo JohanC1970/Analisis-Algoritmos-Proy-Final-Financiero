@@ -434,8 +434,9 @@
       <p class="section-title" style="margin-bottom:.75rem">// Metodología</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;font-size:.8rem;color:var(--muted);line-height:1.7;">
         <div>
-          <strong style="color:var(--text);font-family:var(--mono)">Retorno diario</strong><br>
-          r<sub>t</sub> = (close<sub>t</sub> − close<sub>t−1</sub>) / close<sub>t−1</sub>
+          <strong style="color:var(--text);font-family:var(--mono)">Retorno diario (logarítmico)</strong><br>
+          r<sub>t</sub> = ln(close<sub>t</sub> / close<sub>t−1</sub>)<br>
+          <span style="font-size:.74rem">Aditivo en el tiempo · mejor comportamiento estadístico que el retorno aritmético.</span>
         </div>
         <div>
           <strong style="color:var(--text);font-family:var(--mono)">Desv. estándar (σ)</strong><br>
@@ -448,6 +449,11 @@
         <div>
           <strong style="color:var(--text);font-family:var(--mono)">Sharpe aproximado</strong><br>
           Sharpe = (μ × 252) / σ<sub>a</sub> &nbsp;(sin tasa libre de riesgo)
+        </div>
+        <div>
+          <strong style="color:var(--text);font-family:var(--mono)">Score de riesgo (ranking)</strong><br>
+          score = σ<sub>a</sub> × (1 + 0.10·f<sub>1</sub> + 0.05·f<sub>2</sub>)<br>
+          <span style="font-size:.74rem">f<sub>1</sub>, f<sub>2</sub> = frecuencia ∈ [0,1] del patrón 1 y 2. Solo afecta el orden del ranking; la categoría usa solo σ<sub>a</sub>.</span>
         </div>
         <div>
           <strong style="color:var(--text);font-family:var(--mono)">Ventana deslizante</strong><br>

@@ -376,6 +376,16 @@
         <p class="section-title" style="margin-top:2rem">// Formulación matemática</p>
         <div class="formulas-grid">
             <div class="formula-card">
+                <h4>Retorno logarítmico · O(n)</h4>
+                <pre>rₜ = ln(closeₜ / closeₜ₋₁)
+
+Ventajas sobre el aritmético:
+· Aditivo en el tiempo:
+  Σ rₜ = retorno total del período.
+· Más simétrico y aproximadamente
+  normal → mejora Pearson y coseno.</pre>
+            </div>
+            <div class="formula-card">
                 <h4>Distancia Euclidiana · O(n)</h4>
                 <pre>d(A,B) = √[ Σ(aᵢ - bᵢ)² ]
          i=1..n
@@ -493,7 +503,7 @@ cos θ ∈ [-1, 1]</pre>
     <div class="meta-sep"></div>
     <div class="meta-item"><span class="meta-label">Algoritmos</span><span class="meta-value">4</span></div>
     <div class="meta-sep"></div>
-    <div class="meta-item"><span class="meta-label">Serie usada</span><span class="meta-value">Retornos diarios</span></div>
+    <div class="meta-item"><span class="meta-label">Serie usada</span><span class="meta-value">Retornos log. diarios</span></div>
   `;
 
         // Tarjetas de algoritmos

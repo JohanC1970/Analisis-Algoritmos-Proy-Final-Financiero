@@ -88,7 +88,16 @@ public class SimilitudService {
     /**
      * Calcula la serie de retornos diarios a partir de precios de cierre ordenados por fecha.
      *
-     * Fórmula: r_t = (close_t - close_{t-1}) / close_{t-1}
+     * Fórmula: r_t = ln(close_t / close_{t-1})
+     *
+     * Se usa el retorno logarítmico (en lugar del aritmético) por dos razones:
+     *   1. Aditividad temporal: la suma de retornos logarítmicos diarios equivale
+     *      exactamente al retorno logarítmico del período completo, sin el sesgo
+     *      de composición que introduce el retorno aritmético.
+     *   2. Mejor comportamiento estadístico: los retornos logarítmicos son más
+     *      simétricos y aproximadamente normales, lo que mejora la fiabilidad de
+     *      los algoritmos de similitud (Pearson, coseno) que asumen distribuciones
+     *      centradas.
      *
      * El primer día no tiene retorno (no hay día anterior), así que la serie de retornos
      * tiene n-1 elementos si hay n días de precios.
@@ -107,10 +116,10 @@ public class SimilitudService {
             double precioAyer  = entradas.get(i - 1).getValue();
             LocalDate fechaHoy = entradas.get(i).getKey();
 
-            // Protección contra división por cero (precio de ayer = 0, caso anómalo).
-            if (precioAyer == 0.0) continue;
+            // Protección contra precios no positivos (logaritmo indefinido para ≤ 0).
+            if (precioAyer <= 0.0 || precioHoy <= 0.0) continue;
 
-            double retorno = (precioHoy - precioAyer) / precioAyer;
+            double retorno = Math.log(precioHoy / precioAyer);
             retornos.put(fechaHoy, retorno);
         }
 

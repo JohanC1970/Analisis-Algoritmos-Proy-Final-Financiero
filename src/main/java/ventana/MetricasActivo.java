@@ -26,8 +26,9 @@ import java.util.List;
  * FÓRMULAS IMPLEMENTADAS
  * ═══════════════════════════════════════════════════════════════════════
  *
- *   Retorno diario (aritmético lineal — estándar para horizontes cortos):
- *     r_t = (close_t − close_{t-1}) / close_{t-1}
+ *   Retorno diario (logarítmico — preferido por aditividad temporal y mejor
+ *   comportamiento estadístico en series financieras):
+ *     r_t = ln(close_t / close_{t-1})
  *
  *   Media aritmética:
  *     μ = (1/n) × Σ_{t=1}^{n} r_t
@@ -107,8 +108,22 @@ public class MetricasActivo {
     public final String categoriaDescripcion;
 
     /**
-     * Score numérico de riesgo = volatilidadAnual.
-     * Usado por ClasificadorRiesgo para ordenar la lista ascendentemente.
+     * Score numérico de riesgo compuesto, usado para ordenar activos en el ranking.
+     *
+     * Fórmula:
+     *   scoreRiesgo = σ_a × (1 + 0.10 × frecP1 + 0.05 × frecP2)
+     *
+     * Donde:
+     *   σ_a   = volatilidadAnual (métrica base de riesgo).
+     *   frecP1 = frecuencia ∈ [0,1] del primer patrón detectado (racha alcista).
+     *            Peso 0.10: una racha alcista frecuente implica mayor momentum
+     *            y mayor volatilidad implícita, por lo que ajusta el score al alza.
+     *   frecP2 = frecuencia ∈ [0,1] del segundo patrón detectado (compresión de rango).
+     *            Peso 0.05: señal más neutral, ajuste menor.
+     *
+     * Nota: los umbrales CONSERVADOR / MODERADO / AGRESIVO siguen basados
+     * exclusivamente en σ_a (volatilidadAnual). Este score solo afecta el ORDEN
+     * dentro del ranking, no la categoría asignada.
      */
     public final double scoreRiesgo;
 
@@ -160,7 +175,12 @@ public class MetricasActivo {
                 : 0.0;
 
         // ── PASO 6: Clasificación automática por volatilidad anual ────────────
-        this.scoreRiesgo = this.volatilidadAnual;
+        // Score compuesto: ajusta σ_a por la frecuencia de los dos primeros patrones.
+        double frecP1 = (!patrones.isEmpty())    ? patrones.get(0).frecuencia : 0.0;
+        double frecP2 = (patrones.size() >= 2)   ? patrones.get(1).frecuencia : 0.0;
+        this.scoreRiesgo = this.volatilidadAnual * (1.0 + 0.1 * frecP1 + 0.05 * frecP2);
+
+        // La categoría sigue basándose SOLO en σ_a, no en scoreRiesgo.
         CategoriaRiesgo cat   = CategoriaRiesgo.clasificar(this.volatilidadAnual);
         this.categoriaNombre      = cat.nombre;
         this.categoriaColor       = cat.color;
@@ -174,11 +194,19 @@ public class MetricasActivo {
     /**
      * PASO 1 — Calcula la serie de retornos diarios a partir de precios de cierre.
      *
-     *   r_t = (close_t − close_{t-1}) / close_{t-1}
+     *   r_t = ln(close_t / close_{t-1})
+     *
+     * Se usa el retorno logarítmico (en lugar del aritmético) por dos razones:
+     *   1. Aditividad temporal: la suma de retornos logarítmicos diarios equivale
+     *      exactamente al retorno logarítmico del período completo, sin el sesgo
+     *      de composición que introduce el retorno aritmético.
+     *   2. Mejor comportamiento estadístico: los retornos logarítmicos son más
+     *      simétricos y aproximadamente normales, lo que hace válidos los supuestos
+     *      de media y varianza empleados en el resto del cálculo (Sharpe, σ_a).
      *
      * Condiciones de filtrado (datos anómalos del ETL):
-     *   - Ignora días con close_{t-1} ≤ 0 (evita división por cero).
-     *   - Ignora días con close_t ≤ 0    (precio inválido).
+     *   - Ignora días con close_{t-1} ≤ 0 (evita logaritmo de número no positivo).
+     *   - Ignora días con close_t ≤ 0    (precio inválido — logaritmo indefinido).
      *
      * @param serie Lista de registros del activo ordenados por fecha.
      * @return Lista de retornos diarios. Longitud típica = serie.size() − 1.
@@ -192,7 +220,7 @@ public class MetricasActivo {
             double closeAyer = serie.get(t - 1).getClose();
 
             if (closeAyer > 0.0 && closeHoy > 0.0) {
-                retornos.add((closeHoy - closeAyer) / closeAyer);
+                retornos.add(Math.log(closeHoy / closeAyer));
             }
         }
         return retornos;
