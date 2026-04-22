@@ -1,0 +1,2046 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniQuindío · Análisis de Algoritmos 2026-1</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$','$'], ['\\(','\\)']], displayMath: [['$$','$$'],['\\[','\\]']] },
+            options: { skipHtmlTags: ['script','noscript','style','textarea','pre'] },
+            startup: { typeset: false }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+    <style>
+        /* ═══════════════════════════════════════════════════════════════════════
+           VARIABLES Y RESET
+           ═══════════════════════════════════════════════════════════════════════ */
+        :root {
+            --bg0:      #050810;
+            --bg1:      #0a0f1e;
+            --bg2:      #0f1628;
+            --bg3:      #162036;
+            --border:   #1e3050;
+            --border2:  #263a5a;
+            --cyan:     #00d4ff;
+            --cyan-dim: rgba(0,212,255,0.15);
+            --green:    #00ff88;
+            --green-dim:rgba(0,255,136,0.12);
+            --amber:    #ffb300;
+            --amber-dim:rgba(255,179,0,0.12);
+            --red:      #ff4060;
+            --red-dim:  rgba(255,64,96,0.12);
+            --purple:   #b060ff;
+            --text:     #c8d8f0;
+            --muted:    #4a6080;
+            --muted2:   #2a3a54;
+            --mono:     'IBM Plex Mono', monospace;
+            --sans:     'IBM Plex Sans', sans-serif;
+        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        html{scroll-behavior:smooth}
+        body{
+            background:var(--bg0);
+            color:var(--text);
+            font-family:var(--sans);
+            min-height:100vh;
+            overflow-x:hidden;
+        }
+
+        /* Grid de fondo */
+        body::before{
+            content:'';
+            position:fixed;inset:0;
+            background-image:
+                    linear-gradient(rgba(0,212,255,0.025) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(0,212,255,0.025) 1px, transparent 1px);
+            background-size:40px 40px;
+            pointer-events:none;z-index:0;
+        }
+
+        /* Glow radial de fondo */
+        body::after{
+            content:'';
+            position:fixed;
+            top:-20%;left:50%;
+            transform:translateX(-50%);
+            width:900px;height:500px;
+            background:radial-gradient(ellipse, rgba(0,100,200,0.08) 0%, transparent 70%);
+            pointer-events:none;z-index:0;
+        }
+
+        .root{position:relative;z-index:1;min-height:100vh;display:flex;flex-direction:column}
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           HEADER / NAV
+           ═══════════════════════════════════════════════════════════════════════ */
+        header{
+            border-bottom:1px solid var(--border);
+            background:rgba(5,8,16,0.9);
+            backdrop-filter:blur(12px);
+            position:sticky;top:0;z-index:100;
+        }
+        .header-inner{
+            max-width:1400px;margin:0 auto;
+            padding:0 2rem;
+            display:flex;align-items:center;gap:2rem;
+            height:56px;
+        }
+        .logo{
+            font-family:var(--mono);font-size:.7rem;font-weight:700;
+            letter-spacing:.12em;text-transform:uppercase;
+            color:var(--cyan);
+            display:flex;flex-direction:column;line-height:1.3;
+            flex-shrink:0;
+        }
+        .logo span{color:var(--muted);font-weight:400;font-size:.6rem;letter-spacing:.08em}
+
+        .nav{
+            display:flex;gap:.25rem;margin-left:auto;
+        }
+        .nav-btn{
+            font-family:var(--mono);font-size:.68rem;font-weight:500;
+            letter-spacing:.06em;text-transform:uppercase;
+            padding:.45rem 1rem;border-radius:4px;
+            border:1px solid transparent;
+            color:var(--muted);background:transparent;
+            cursor:pointer;transition:all .15s;
+            display:flex;align-items:center;gap:.5rem;white-space:nowrap;
+        }
+        .nav-btn:hover{color:var(--text);border-color:var(--border2)}
+        .nav-btn.active{
+            color:var(--cyan);
+            border-color:var(--cyan);
+            background:var(--cyan-dim);
+        }
+        .nav-btn .req-badge{
+            font-size:.55rem;padding:.1rem .35rem;
+            border-radius:3px;background:var(--border2);
+            color:var(--muted);
+        }
+        .nav-btn.active .req-badge{background:rgba(0,212,255,0.2);color:var(--cyan)}
+
+        /* Estado de carga en header */
+        .status-pill{
+            font-family:var(--mono);font-size:.62rem;
+            padding:.3rem .75rem;border-radius:12px;
+            background:var(--green-dim);border:1px solid rgba(0,255,136,0.3);
+            color:var(--green);
+            display:flex;align-items:center;gap:.4rem;flex-shrink:0;
+        }
+        .status-pill.loading{
+            background:var(--amber-dim);border-color:rgba(255,179,0,0.3);color:var(--amber);
+        }
+        .pulse{
+            width:6px;height:6px;border-radius:50%;background:currentColor;
+            animation:pulse 1.2s ease-in-out infinite;
+        }
+        @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           SECCIONES
+           ═══════════════════════════════════════════════════════════════════════ */
+        main{flex:1;max-width:1400px;width:100%;margin:0 auto;padding:2rem}
+        .section{display:none}
+        .section.active{display:block}
+
+        /* ── Títulos de sección ── */
+        .section-head{margin-bottom:2rem}
+        .section-tag{
+            font-family:var(--mono);font-size:.62rem;font-weight:700;
+            letter-spacing:.15em;text-transform:uppercase;
+            color:var(--cyan);margin-bottom:.5rem;display:block;
+        }
+        .section-title{
+            font-family:var(--mono);font-size:1.6rem;font-weight:700;
+            color:var(--text);line-height:1.1;
+        }
+        .section-title span{color:var(--cyan)}
+        .section-desc{color:var(--muted);font-size:.85rem;margin-top:.5rem;line-height:1.6}
+
+        /* ── Paneles ── */
+        .panel{
+            background:var(--bg2);
+            border:1px solid var(--border);
+            border-radius:8px;
+            overflow:hidden;
+        }
+        .panel-header{
+            display:flex;align-items:center;justify-content:space-between;
+            padding:1rem 1.5rem;
+            border-bottom:1px solid var(--border);
+            background:var(--bg3);
+            gap:.75rem;flex-wrap:wrap;
+        }
+        .panel-title{
+            font-family:var(--mono);font-size:.7rem;font-weight:700;
+            letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);
+        }
+        .panel-body{padding:1.5rem}
+
+        /* ── Grid layouts ── */
+        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+        .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+        .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+        @media(max-width:900px){
+            .grid-2,.grid-3,.grid-4{grid-template-columns:1fr}
+        }
+
+        /* ── KPI Cards ── */
+        .kpi{
+            background:var(--bg3);border:1px solid var(--border);
+            border-radius:6px;padding:1.25rem;
+            position:relative;overflow:hidden;
+        }
+        .kpi::before{
+            content:'';position:absolute;top:0;left:0;right:0;height:2px;
+            background:var(--accent,var(--cyan));
+        }
+        .kpi-label{
+            font-family:var(--mono);font-size:.6rem;font-weight:700;
+            letter-spacing:.1em;text-transform:uppercase;
+            color:var(--muted);margin-bottom:.5rem;
+        }
+        .kpi-value{
+            font-family:var(--mono);font-size:1.8rem;font-weight:700;
+            color:var(--accent,var(--cyan));line-height:1;
+        }
+        .kpi-sub{font-size:.72rem;color:var(--muted);margin-top:.4rem}
+
+        /* ── Tablas ── */
+        .table-wrap{overflow-x:auto}
+        table{width:100%;border-collapse:collapse}
+        thead tr{background:var(--bg3)}
+        th{
+            font-family:var(--mono);font-size:.6rem;font-weight:700;
+            letter-spacing:.08em;text-transform:uppercase;
+            color:var(--muted);padding:.7rem 1rem;text-align:left;
+            border-bottom:1px solid var(--border);white-space:nowrap;
+        }
+        tbody tr{border-bottom:1px solid rgba(30,48,80,.5);transition:background .1s}
+        tbody tr:hover{background:rgba(0,212,255,.03)}
+        tbody tr:last-child{border-bottom:none}
+        td{padding:.65rem 1rem;font-size:.82rem;vertical-align:middle}
+        .mono{font-family:var(--mono);font-size:.8rem}
+        .pos{color:var(--green)}
+        .neg{color:var(--red)}
+        .neu{color:var(--muted)}
+
+        /* ── Badge de categoría ── */
+        .badge{
+            display:inline-block;font-family:var(--mono);
+            font-size:.6rem;font-weight:700;letter-spacing:.06em;
+            text-transform:uppercase;padding:.2rem .6rem;border-radius:4px;
+        }
+        .badge-cons{background:var(--green-dim);color:var(--green);border:1px solid rgba(0,255,136,.25)}
+        .badge-mod {background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,179,0,.25)}
+        .badge-agr {background:var(--red-dim);  color:var(--red);  border:1px solid rgba(255,64,96,.25)}
+
+        /* ── Loading skeleton ── */
+        .skeleton{
+            background:linear-gradient(90deg,var(--bg3) 25%,var(--border) 50%,var(--bg3) 75%);
+            background-size:200% 100%;
+            animation:shimmer 1.5s infinite;
+            border-radius:4px;
+        }
+        @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+        /* ── Estado de carga centrado ── */
+        .loading-state{
+            text-align:center;padding:4rem 2rem;
+            font-family:var(--mono);color:var(--muted);font-size:.85rem;
+        }
+        .loading-spinner{
+            width:36px;height:36px;
+            border:2px solid var(--border);border-top-color:var(--cyan);
+            border-radius:50%;animation:spin .7s linear infinite;
+            margin:0 auto 1.25rem;
+        }
+        @keyframes spin{to{transform:rotate(360deg)}}
+
+        /* ── Botones ── */
+        .btn{
+            font-family:var(--mono);font-size:.72rem;font-weight:700;
+            letter-spacing:.06em;text-transform:uppercase;
+            padding:.6rem 1.4rem;border-radius:5px;border:none;
+            cursor:pointer;transition:all .15s;
+        }
+        .btn-primary{background:var(--cyan);color:var(--bg0)}
+        .btn-primary:hover{background:#00b8dc;transform:translateY(-1px)}
+        .btn-primary:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;transform:none}
+        .btn-outline{background:transparent;color:var(--cyan);border:1px solid var(--cyan)}
+        .btn-outline:hover{background:var(--cyan-dim)}
+
+        /* ── Selects ── */
+        select{
+            background:var(--bg3);border:1px solid var(--border);
+            color:var(--text);border-radius:5px;
+            padding:.55rem .85rem;font-family:var(--mono);font-size:.8rem;
+            appearance:none;cursor:pointer;transition:border-color .15s;
+            background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' fill='none'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%234a6080' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+            background-repeat:no-repeat;background-position:right .75rem center;
+            padding-right:2rem;
+        }
+        select:focus{outline:none;border-color:var(--cyan)}
+
+        /* ── Separador ── */
+        .spacer{height:1.5rem}
+        .spacer-sm{height:.75rem}
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           SECCIÓN 1 — ETL
+           ═══════════════════════════════════════════════════════════════════════ */
+        .etl-ticker-grid{
+            display:grid;
+            grid-template-columns:repeat(auto-fill,minmax(180px,1fr));
+            gap:.75rem;
+        }
+        .etl-ticker-card{
+            background:var(--bg3);border:1px solid var(--border);
+            border-radius:6px;padding:.9rem 1rem;
+            display:flex;align-items:center;justify-content:space-between;
+        }
+        .etl-ticker-name{font-family:var(--mono);font-size:.85rem;font-weight:700;color:var(--cyan)}
+        .etl-ticker-count{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           SECCIÓN 2 — SORTING
+           ═══════════════════════════════════════════════════════════════════════ */
+        .bar-chart-wrap{
+            background:var(--bg3);border-radius:6px;
+            padding:1.25rem;overflow:hidden;
+        }
+        .bar-row{
+            display:flex;align-items:center;gap:.75rem;
+            margin-bottom:.6rem;
+        }
+        .bar-row:last-child{margin-bottom:0}
+        .bar-label{
+            font-family:var(--mono);font-size:.68rem;color:var(--muted);
+            width:160px;flex-shrink:0;text-align:right;
+        }
+        .bar-track{flex:1;height:22px;background:var(--bg2);border-radius:3px;overflow:hidden;position:relative}
+        .bar-fill{
+            height:100%;border-radius:3px;
+            transition:width 1s cubic-bezier(.22,.61,.36,1);
+        }
+        .bar-val{
+            font-family:var(--mono);font-size:.65rem;font-weight:700;
+            color:var(--text);white-space:nowrap;
+            width:72px;flex-shrink:0;text-align:left;
+        }
+        .bar-complexity{
+            font-family:var(--mono);font-size:.62rem;color:var(--purple);
+            width:110px;flex-shrink:0;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           SECCIÓN 3 — SIMILITUD
+           ═══════════════════════════════════════════════════════════════════════ */
+        .algo-cards{
+            display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+            gap:1rem;
+        }
+        .algo-card{
+            background:var(--bg3);border:1px solid var(--border);
+            border-radius:8px;padding:1.25rem;
+            position:relative;overflow:hidden;
+        }
+        .algo-card::before{
+            content:'';position:absolute;top:0;left:0;right:0;height:2px;
+        }
+        .algo-card:nth-child(1)::before{background:var(--cyan)}
+        .algo-card:nth-child(2)::before{background:var(--green)}
+        .algo-card:nth-child(3)::before{background:var(--amber)}
+        .algo-card:nth-child(4)::before{background:var(--purple)}
+        .algo-name{
+            font-family:var(--mono);font-size:.65rem;font-weight:700;
+            text-transform:uppercase;letter-spacing:.08em;margin-bottom:.7rem;
+        }
+        .algo-card:nth-child(1) .algo-name{color:var(--cyan)}
+        .algo-card:nth-child(2) .algo-name{color:var(--green)}
+        .algo-card:nth-child(3) .algo-name{color:var(--amber)}
+        .algo-card:nth-child(4) .algo-name{color:var(--purple)}
+        .algo-value{
+            font-family:var(--mono);font-size:1.7rem;font-weight:700;
+            color:var(--text);line-height:1;margin-bottom:.4rem;
+        }
+        .algo-complexity{font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-bottom:.7rem}
+        .algo-interp{
+            font-size:.73rem;color:var(--muted);line-height:1.5;
+            border-top:1px solid var(--border);padding-top:.6rem;
+        }
+        .algo-time{
+            position:absolute;top:.9rem;right:.9rem;
+            font-family:var(--mono);font-size:.6rem;color:var(--muted2);
+        }
+
+        /* Stats grid de similitud */
+        .stats-row{
+            display:flex;justify-content:space-between;align-items:center;
+            padding:.38rem 0;border-bottom:1px solid rgba(30,48,80,.4);
+            font-size:.78rem;
+        }
+        .stats-row:last-child{border-bottom:none}
+        .stats-label{color:var(--muted)}
+        .stats-val{font-family:var(--mono);font-size:.78rem;color:var(--text)}
+
+        /* Fórmulas */
+        .formulas-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:1.25rem;align-items:stretch}
+        @media(max-width:760px){.formulas-grid{grid-template-columns:1fr}}
+        .formula-card{
+            background:var(--bg3);border:1px solid var(--border);
+            border-radius:8px;padding:1.25rem 1.5rem;
+            overflow:hidden;display:flex;flex-direction:column;
+        }
+        .formula-card h4{
+            font-family:var(--mono);font-size:.62rem;font-weight:700;
+            letter-spacing:.1em;text-transform:uppercase;
+            color:var(--muted);margin-bottom:1rem;flex-shrink:0;
+        }
+        .formula-card pre{
+            font-family:var(--mono);font-size:.7rem;
+            color:var(--cyan);line-height:1.7;
+            white-space:pre-wrap;overflow-wrap:break-word;
+        }
+        /* Sin scroll — la fórmula se adapta al contenedor */
+        .formula-math{overflow:hidden;padding:.25rem 0;flex:1;display:flex;flex-direction:column;justify-content:center}
+        .formula-math mjx-container{overflow:hidden !important;max-width:100%}
+        .formula-math mjx-container svg{max-width:100%;height:auto !important}
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           SECCIÓN 4 — DASHBOARD
+           ═══════════════════════════════════════════════════════════════════════ */
+        .heatmap-wrap{
+            overflow:auto;max-height:640px;
+            background:var(--bg3);border-radius:6px;
+        }
+        .canvas-wrap{
+            background:var(--bg3);border-radius:6px;overflow:hidden;
+        }
+
+        /* Controles */
+        .controls{display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.25rem}
+        .field{display:flex;flex-direction:column;gap:.35rem}
+        .field label{
+            font-family:var(--mono);font-size:.6rem;font-weight:700;
+            letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+        }
+
+        /* Barra de distribución */
+        .dist-bar{display:flex;height:16px;border-radius:8px;overflow:hidden;margin:.5rem 0}
+        .dist-seg-cons{background:var(--green);transition:width .5s ease}
+        .dist-seg-mod {background:var(--amber);transition:width .5s ease}
+        .dist-seg-agr {background:var(--red);transition:width .5s ease}
+        .dist-legend{display:flex;gap:1.25rem;flex-wrap:wrap;margin-top:.6rem}
+        .dist-item{display:flex;align-items:center;gap:.4rem;font-size:.73rem;color:var(--muted)}
+        .dist-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+        /* Patrones */
+        .patron-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+        @media(max-width:650px){.patron-grid{grid-template-columns:1fr}}
+        .patron-card{
+            background:var(--bg3);border:1px solid var(--border);
+            border-radius:8px;padding:1.25rem;
+        }
+        .patron-card h3{
+            font-family:var(--mono);font-size:.72rem;font-weight:700;
+            color:var(--cyan);margin-bottom:.5rem;
+        }
+        .patron-desc{font-size:.78rem;color:var(--muted);line-height:1.5;margin-bottom:.75rem}
+        .patron-formula{
+            background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.15);
+            border-radius:6px;padding:.75rem 1rem;
+            color:var(--text);text-align:center;
+            overflow-x:auto;
+        }
+        .formula-math{
+            color:var(--text);text-align:center;
+            padding:.25rem 0;overflow-x:auto;
+        }
+        /* MathJax — color y escala para fondo oscuro */
+        .MathJax, mjx-container{color:var(--text) !important}
+        mjx-container svg{color:var(--text)}
+        /* Tamaño de render para las tarjetas de fórmulas */
+        .patron-formula mjx-container{font-size:90% !important}
+
+        /* Freq bar en tabla de detalle */
+        .freq-bar-mini{height:4px;border-radius:2px;background:var(--border);margin:.3rem 0;overflow:hidden}
+        .freq-fill-mini{height:100%;border-radius:2px;background:var(--cyan);transition:width .4s}
+
+        /* Tooltip heatmap */
+        #heatTooltip{
+            position:fixed;display:none;
+            background:var(--bg3);border:1px solid var(--border);
+            border-radius:5px;padding:.3rem .7rem;
+            font-family:var(--mono);font-size:.72rem;color:var(--text);
+            pointer-events:none;z-index:500;
+            box-shadow:0 4px 16px rgba(0,0,0,.5);
+            white-space:nowrap;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           ESCALA DE COLOR HEATMAP
+           ═══════════════════════════════════════════════════════════════════════ */
+        .scale-row{display:flex;align-items:center;gap:.75rem;margin-top:.75rem}
+        .scale-labels{
+            display:flex;justify-content:space-between;
+            font-family:var(--mono);font-size:.62rem;color:var(--muted);width:200px;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           SECCIÓN 0 — HOME / LANDING
+           ═══════════════════════════════════════════════════════════════════════ */
+
+        /* Hero */
+        .hero{
+            min-height:88vh;
+            display:flex;flex-direction:column;justify-content:center;
+            padding:4rem 0 3rem;
+            position:relative;
+        }
+        .hero-eyebrow{
+            font-family:var(--mono);font-size:.65rem;font-weight:700;
+            letter-spacing:.2em;text-transform:uppercase;
+            color:var(--cyan);margin-bottom:1.5rem;
+            display:flex;align-items:center;gap:.75rem;
+        }
+        .hero-eyebrow::before{
+            content:'';display:inline-block;width:32px;height:1px;background:var(--cyan);
+        }
+        .hero-title{
+            font-family:var(--mono);
+            font-size:clamp(2.2rem,5vw,4rem);
+            font-weight:700;line-height:1.05;
+            color:var(--text);margin-bottom:1rem;
+            letter-spacing:-.02em;
+        }
+        .hero-title .hl{
+            color:transparent;
+            -webkit-text-stroke:1px var(--cyan);
+        }
+        .hero-title .hl2{color:var(--cyan)}
+        .hero-sub{
+            font-size:1rem;color:var(--muted);line-height:1.7;
+            max-width:600px;margin-bottom:2.5rem;
+        }
+        .hero-ctas{display:flex;gap:.75rem;flex-wrap:wrap}
+        .cta-primary{
+            font-family:var(--mono);font-size:.75rem;font-weight:700;
+            letter-spacing:.08em;text-transform:uppercase;
+            padding:.8rem 2rem;border-radius:5px;
+            background:var(--cyan);color:var(--bg0);
+            border:none;cursor:pointer;transition:all .2s;
+        }
+        .cta-primary:hover{background:#00b8dc;transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,212,255,.25)}
+        .cta-secondary{
+            font-family:var(--mono);font-size:.75rem;font-weight:700;
+            letter-spacing:.08em;text-transform:uppercase;
+            padding:.8rem 2rem;border-radius:5px;
+            background:transparent;color:var(--text);
+            border:1px solid var(--border2);cursor:pointer;transition:all .2s;
+            text-decoration:none;display:inline-flex;align-items:center;gap:.5rem;
+        }
+        .cta-secondary:hover{border-color:var(--cyan);color:var(--cyan)}
+
+        /* Estadísticas hero */
+        .hero-stats{
+            display:flex;gap:2.5rem;flex-wrap:wrap;
+            margin-top:3rem;padding-top:2rem;
+            border-top:1px solid var(--border);
+        }
+        .hero-stat-val{
+            font-family:var(--mono);font-size:1.8rem;font-weight:700;
+            color:var(--cyan);line-height:1;
+        }
+        .hero-stat-label{
+            font-family:var(--mono);font-size:.62rem;
+            letter-spacing:.1em;text-transform:uppercase;
+            color:var(--muted);margin-top:.3rem;
+        }
+
+        /* Ticker animado */
+        .ticker-tape{
+            overflow:hidden;
+            border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+            padding:.5rem 0;margin:2rem 0;
+            background:var(--bg1);
+        }
+        .ticker-inner{
+            display:flex;gap:2.5rem;
+            animation:tickerScroll 30s linear infinite;
+            width:max-content;
+        }
+        .ticker-item{
+            font-family:var(--mono);font-size:.72rem;
+            color:var(--muted);white-space:nowrap;
+            display:flex;align-items:center;gap:.5rem;
+        }
+        .ticker-item .t-name{color:var(--text);font-weight:700}
+        .ticker-item .t-pos{color:var(--green)}
+        .ticker-item .t-neg{color:var(--red)}
+        @keyframes tickerScroll{
+            0%{transform:translateX(0)}
+            100%{transform:translateX(-50%)}
+        }
+
+        /* Cards de requerimientos */
+        .req-cards{
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+            gap:1rem;margin-bottom:4rem;
+        }
+        .req-card{
+            background:var(--bg2);border:1px solid var(--border);
+            border-radius:10px;padding:1.75rem;
+            position:relative;overflow:hidden;
+            cursor:pointer;transition:all .2s;
+        }
+        .req-card:hover{
+            border-color:var(--card-accent, var(--cyan));
+            transform:translateY(-3px);
+            box-shadow:0 12px 40px rgba(0,0,0,.4);
+        }
+        .req-card::before{
+            content:'';position:absolute;top:0;left:0;right:0;height:2px;
+            background:var(--card-accent, var(--cyan));
+            transform:scaleX(0);transform-origin:left;
+            transition:transform .3s ease;
+        }
+        .req-card:hover::before{transform:scaleX(1)}
+        .req-card-num{
+            font-family:var(--mono);font-size:.6rem;font-weight:700;
+            letter-spacing:.15em;text-transform:uppercase;
+            color:var(--card-accent,var(--cyan));
+            margin-bottom:.75rem;
+        }
+        .req-card-icon{
+            font-size:1.6rem;margin-bottom:.75rem;display:block;
+        }
+        .req-card-title{
+            font-family:var(--mono);font-size:.95rem;font-weight:700;
+            color:var(--text);margin-bottom:.6rem;line-height:1.3;
+        }
+        .req-card-desc{
+            font-size:.78rem;color:var(--muted);line-height:1.6;
+            margin-bottom:1rem;
+        }
+        .req-card-tags{display:flex;flex-wrap:wrap;gap:.4rem}
+        .req-tag{
+            font-family:var(--mono);font-size:.58rem;
+            padding:.18rem .5rem;border-radius:3px;
+            background:var(--bg3);border:1px solid var(--border);
+            color:var(--muted);
+        }
+
+        /* Stack tecnológico */
+        .stack-grid{
+            display:grid;
+            grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+            gap:.75rem;margin-bottom:4rem;
+        }
+        .stack-item{
+            background:var(--bg2);border:1px solid var(--border);
+            border-radius:8px;padding:1rem 1.25rem;
+            display:flex;flex-direction:column;gap:.35rem;
+            transition:border-color .2s;
+        }
+        .stack-item:hover{border-color:var(--border2)}
+        .stack-lang{
+            font-family:var(--mono);font-size:.85rem;font-weight:700;color:var(--text);
+        }
+        .stack-role{font-size:.72rem;color:var(--muted)}
+
+        /* Tarjetas de equipo */
+        .team-grid{
+            display:grid;grid-template-columns:1fr 1fr;
+            gap:1.5rem;margin-bottom:4rem;
+        }
+        @media(max-width:650px){.team-grid{grid-template-columns:1fr}}
+        .team-card{
+            background:var(--bg2);border:1px solid var(--border);
+            border-radius:12px;padding:2rem;
+            position:relative;overflow:hidden;
+            transition:border-color .2s, transform .2s;
+        }
+        .team-card:hover{border-color:var(--border2);transform:translateY(-2px)}
+        .team-card::after{
+            content:'';position:absolute;
+            bottom:-60px;right:-60px;
+            width:150px;height:150px;
+            border-radius:50%;
+            background:radial-gradient(circle, rgba(0,212,255,.06) 0%, transparent 70%);
+            pointer-events:none;
+        }
+        .team-avatar{
+            width:56px;height:56px;border-radius:50%;
+            background:var(--bg3);border:2px solid var(--border);
+            display:flex;align-items:center;justify-content:center;
+            font-family:var(--mono);font-size:1.1rem;font-weight:700;
+            color:var(--cyan);margin-bottom:1.25rem;
+            position:relative;z-index:1;
+        }
+        .team-name{
+            font-family:var(--mono);font-size:.9rem;font-weight:700;
+            color:var(--text);margin-bottom:.2rem;
+            position:relative;z-index:1;
+        }
+        .team-role{
+            font-size:.75rem;color:var(--muted);margin-bottom:1.25rem;
+            position:relative;z-index:1;
+        }
+        .team-links{display:flex;flex-direction:column;gap:.6rem;position:relative;z-index:1}
+        .team-link{
+            display:flex;align-items:center;gap:.6rem;
+            font-family:var(--mono);font-size:.7rem;color:var(--muted);
+            text-decoration:none;transition:color .15s;
+        }
+        .team-link:hover{color:var(--cyan)}
+        .team-link-icon{
+            width:24px;height:24px;border-radius:4px;
+            background:var(--bg3);border:1px solid var(--border);
+            display:flex;align-items:center;justify-content:center;
+            font-size:.75rem;flex-shrink:0;
+        }
+
+        /* Repo card */
+        .repo-card{
+            background:var(--bg2);border:1px solid var(--border);
+            border-radius:12px;padding:2rem 2.5rem;
+            display:flex;align-items:center;justify-content:space-between;
+            gap:2rem;flex-wrap:wrap;margin-bottom:4rem;
+            transition:border-color .2s;
+        }
+        .repo-card:hover{border-color:var(--border2)}
+        .repo-info{}
+        .repo-label{
+            font-family:var(--mono);font-size:.6rem;font-weight:700;
+            letter-spacing:.15em;text-transform:uppercase;
+            color:var(--muted);margin-bottom:.5rem;
+        }
+        .repo-name{
+            font-family:var(--mono);font-size:1rem;font-weight:700;
+            color:var(--text);margin-bottom:.35rem;
+        }
+        .repo-url{
+            font-family:var(--mono);font-size:.72rem;color:var(--cyan);
+            word-break:break-all;
+        }
+        .repo-btn{
+            font-family:var(--mono);font-size:.72rem;font-weight:700;
+            letter-spacing:.08em;text-transform:uppercase;
+            padding:.75rem 1.75rem;border-radius:6px;
+            background:transparent;color:var(--cyan);
+            border:1px solid var(--cyan);cursor:pointer;
+            transition:all .15s;text-decoration:none;
+            display:inline-flex;align-items:center;gap:.5rem;
+            white-space:nowrap;flex-shrink:0;
+        }
+        .repo-btn:hover{background:var(--cyan-dim)}
+
+        /* Sección footer de la home */
+        .home-footer{
+            border-top:1px solid var(--border);padding-top:2rem;
+            display:flex;align-items:center;justify-content:space-between;
+            flex-wrap:wrap;gap:1rem;padding-bottom:3rem;
+        }
+        .home-footer-left{
+            font-family:var(--mono);font-size:.65rem;color:var(--muted);line-height:1.7;
+        }
+        .home-footer-left strong{color:var(--text)}
+
+        /* Separadores de sección home */
+        .home-section-title{
+            font-family:var(--mono);font-size:.62rem;font-weight:700;
+            letter-spacing:.18em;text-transform:uppercase;
+            color:var(--cyan);margin-bottom:1.25rem;
+            display:flex;align-items:center;gap:.75rem;
+        }
+        .home-section-title::after{
+            content:'';flex:1;height:1px;background:var(--border);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════════════
+           RESPONSIVE
+           ═══════════════════════════════════════════════════════════════════════ */
+        @media(max-width:700px){
+            main{padding:1rem}
+            .header-inner{gap:1rem;padding:0 1rem}
+            .nav-btn span:not(.req-badge){display:none}
+            .hero-title{font-size:1.9rem}
+            .hero-stats{gap:1.5rem}
+        }
+    </style>
+</head>
+<body>
+<div class="root">
+
+    <!-- ═══ HEADER ═══════════════════════════════════════════════════════════ -->
+    <header>
+        <div class="header-inner">
+            <div class="logo">
+                ANÁLISIS DE ALGORITMOS
+                <span>Universidad del Quindío · 2026-1</span>
+            </div>
+
+            <nav class="nav">
+                <button class="nav-btn active" onclick="irA('home',this)">
+                    <span class="req-badge">INICIO</span><span>Inicio</span>
+                </button>
+                <button class="nav-btn" onclick="irA('etl',this)">
+                    <span class="req-badge">REQ 1</span><span>ETL</span>
+                </button>
+                <button class="nav-btn" onclick="irA('sorting',this)">
+                    <span class="req-badge">REQ 2</span><span>Sorting</span>
+                </button>
+                <button class="nav-btn" onclick="irA('similitud',this)">
+                    <span class="req-badge">REQ 3</span><span>Similitud</span>
+                </button>
+                <button class="nav-btn" onclick="irA('dashboard',this)">
+                    <span class="req-badge">REQ 4</span><span>Dashboard</span>
+                </button>
+            </nav>
+
+            <div class="status-pill loading" id="statusPill">
+                <div class="pulse"></div>
+                <span id="statusText">Conectando...</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══ MAIN ══════════════════════════════════════════════════════════════ -->
+    <main>
+
+        <!-- ─────────────────────────────────────────────────────────────────────
+             SECCIÓN 0 — HOME / LANDING
+             ───────────────────────────────────────────────────────────────────── -->
+        <section class="section active" id="sec-home">
+
+            <!-- HERO -->
+            <div class="hero">
+                <div class="hero-eyebrow">Universidad del Quindío · Ingeniería de Sistemas y Computación</div>
+                <h1 class="hero-title">
+                    Análisis de<br>
+                    <span class="hl">Algoritmos</span><br>
+                    <span class="hl2">Financieros</span>
+                </h1>
+                <p class="hero-sub">
+                    Sistema de análisis cuantitativo sobre datos reales de la bolsa de valores.
+                    Implementación de algoritmos de ordenamiento, similitud de series de tiempo,
+                    detección de patrones y visualización de riesgo sobre un portafolio de 20 activos.
+                </p>
+                <div class="hero-ctas">
+                    <button class="cta-primary" onclick="irA('etl', document.querySelectorAll('.nav-btn')[1])">
+                        Explorar el proyecto →
+                    </button>
+                    <a class="cta-secondary" href="https://github.com/JohanC1970/Analisis-Algoritmos-Proy-Final-Financiero" target="_blank">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                        Ver repositorio
+                    </a>
+                </div>
+                <div class="hero-stats">
+                    <div>
+                        <div class="hero-stat-val">20</div>
+                        <div class="hero-stat-label">Activos analizados</div>
+                    </div>
+                    <div>
+                        <div class="hero-stat-val">12</div>
+                        <div class="hero-stat-label">Algoritmos de sorting</div>
+                    </div>
+                    <div>
+                        <div class="hero-stat-val">4</div>
+                        <div class="hero-stat-label">Métricas de similitud</div>
+                    </div>
+                    <div>
+                        <div class="hero-stat-val">5 años</div>
+                        <div class="hero-stat-label">Historia financiera</div>
+                    </div>
+                    <div>
+                        <div class="hero-stat-val">2</div>
+                        <div class="hero-stat-label">Patrones detectados</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TICKER ANIMADO -->
+            <div class="ticker-tape">
+                <div class="ticker-inner" id="tickerInner">
+                    <!-- se duplica para el loop infinito -->
+                </div>
+            </div>
+
+            <!-- REQUERIMIENTOS -->
+            <div style="margin-bottom:3rem">
+                <div class="home-section-title">// Requerimientos del proyecto</div>
+                <div class="req-cards">
+                    <div class="req-card" style="--card-accent:var(--cyan)" onclick="irA('etl', document.querySelectorAll('.nav-btn')[1])">
+                        <span class="req-card-icon">⚙</span>
+                        <div class="req-card-num">Requerimiento 1</div>
+                        <div class="req-card-title">ETL — Extracción, Transformación y Carga</div>
+                        <div class="req-card-desc">
+                            Descarga automatizada de datos históricos de 20 activos financieros
+                            mediante peticiones HTTP directas a la API de Yahoo Finance.
+                            Limpieza de valores nulos, unificación en un dataset maestro
+                            y generación de <code style="font-family:var(--mono);font-size:.75em;color:var(--cyan)">RegistroFinanciero</code> por cada día de cotización.
+                        </div>
+                        <div class="req-card-tags">
+                            <span class="req-tag">ApiClient.java</span>
+                            <span class="req-tag">DataParser.java</span>
+                            <span class="req-tag">HTTP/2</span>
+                            <span class="req-tag">Gson</span>
+                            <span class="req-tag">5 años · 1d</span>
+                        </div>
+                    </div>
+
+                    <div class="req-card" style="--card-accent:var(--purple)" onclick="irA('sorting', document.querySelectorAll('.nav-btn')[2])">
+                        <span class="req-card-icon">⬆</span>
+                        <div class="req-card-num">Requerimiento 2 · Seguimiento</div>
+                        <div class="req-card-title">Benchmark de Algoritmos de Ordenamiento</div>
+                        <div class="req-card-desc">
+                            Implementación y comparación de 12 algoritmos de sorting sobre el dataset financiero.
+                            Criterio: fecha de cotización ascendente, desempate por precio de cierre.
+                            Gráfico de barras comparativo y top 15 días con mayor volumen de negociación.
+                        </div>
+                        <div class="req-card-tags">
+                            <span class="req-tag">TimSort</span>
+                            <span class="req-tag">QuickSort</span>
+                            <span class="req-tag">HeapSort</span>
+                            <span class="req-tag">RadixSort</span>
+                            <span class="req-tag">+8 más</span>
+                        </div>
+                    </div>
+
+                    <div class="req-card" style="--card-accent:var(--green)" onclick="irA('similitud', document.querySelectorAll('.nav-btn')[3])">
+                        <span class="req-card-icon">≈</span>
+                        <div class="req-card-num">Requerimiento 3</div>
+                        <div class="req-card-title">Similitud de Series de Tiempo</div>
+                        <div class="req-card-desc">
+                            Cuatro algoritmos implementados desde cero en Java para comparar
+                            retornos logarítmicos diarios entre cualquier par de activos del portafolio.
+                            Cada método incluye análisis formal de complejidad y formulación matemática.
+                        </div>
+                        <div class="req-card-tags">
+                            <span class="req-tag">Euclidiana O(n)</span>
+                            <span class="req-tag">Pearson O(n)</span>
+                            <span class="req-tag">DTW O(n·b)</span>
+                            <span class="req-tag">Coseno O(n)</span>
+                        </div>
+                    </div>
+
+                    <div class="req-card" style="--card-accent:var(--amber)" onclick="irA('dashboard', document.querySelectorAll('.nav-btn')[4])">
+                        <span class="req-card-icon">◈</span>
+                        <div class="req-card-num">Requerimiento 4</div>
+                        <div class="req-card-title">Dashboard Bursátil — Análisis Visual</div>
+                        <div class="req-card-desc">
+                            Mapa de calor de correlación NxN, gráficos de velas con medias móviles
+                            calculadas algorítmicamente, clasificación de activos por nivel de riesgo
+                            y detección de dos patrones con ventana deslizante de 20 días.
+                        </div>
+                        <div class="req-card-tags">
+                            <span class="req-tag">Heatmap</span>
+                            <span class="req-tag">Candlestick</span>
+                            <span class="req-tag">SMA 20/50</span>
+                            <span class="req-tag">Sliding Window</span>
+                            <span class="req-tag">σ Anualizada</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STACK TECNOLÓGICO -->
+            <div style="margin-bottom:3rem">
+                <div class="home-section-title">// Stack tecnológico</div>
+                <div class="stack-grid">
+                    <div class="stack-item">
+                        <div class="stack-lang">Java 21</div>
+                        <div class="stack-role">Backend · Algoritmos · ETL</div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-lang">HttpServer JDK</div>
+                        <div class="stack-role">Servidor HTTP embebido</div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-lang">Gson 2.10</div>
+                        <div class="stack-role">Parseo JSON · API Yahoo</div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-lang">Python 3.9+</div>
+                        <div class="stack-role">Generación de PDF</div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-lang">HTML · CSS · JS</div>
+                        <div class="stack-role">Frontend SPA · Canvas 2D</div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-lang">Maven</div>
+                        <div class="stack-role">Build · Dependencias</div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-lang">Yahoo Finance</div>
+                        <div class="stack-role">Fuente de datos · API pública</div>
+                    </div>
+                    <div class="stack-item">
+                        <div class="stack-lang">ReportLab</div>
+                        <div class="stack-role">Exportación PDF</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- REPOSITORIO -->
+            <div class="home-section-title">// Repositorio</div>
+            <div class="repo-card" style="margin-bottom:3rem">
+                <div class="repo-info">
+                    <div class="repo-label">GitHub · Código fuente completo</div>
+                    <div class="repo-name">Analisis-Algoritmos-Proy-Final-Financiero</div>
+                    <div class="repo-url">https://github.com/JohanC1970/Analisis-Algoritmos-Proy-Final-Financiero</div>
+                </div>
+                <a class="repo-btn"
+                   href="https://github.com/JohanC1970/Analisis-Algoritmos-Proy-Final-Financiero"
+                   target="_blank">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                    Ver en GitHub
+                </a>
+            </div>
+
+            <!-- EQUIPO -->
+            <div class="home-section-title">// Equipo de desarrollo</div>
+            <div class="team-grid" style="margin-bottom:3rem">
+
+                <!-- Johan -->
+                <div class="team-card">
+                    <div class="team-avatar">JG</div>
+                    <div class="team-name">Johan Camilo Garcia Garcia</div>
+                    <div class="team-role">Desarrollador · Ingeniería de Sistemas y Computación</div>
+                    <div class="team-links">
+                        <a class="team-link" href="mailto:johanc.garciag@uqvirtual.edu.co">
+                            <div class="team-link-icon">✉</div>
+                            johanc.garciag@uqvirtual.edu.co
+                        </a>
+                        <a class="team-link" href="https://github.com/JohanC1970" target="_blank">
+                            <div class="team-link-icon">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                            </div>
+                            github.com/JohanC1970
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Miguel -->
+                <div class="team-card">
+                    <div class="team-avatar">MM</div>
+                    <div class="team-name">Miguel Angel Marin Montes</div>
+                    <div class="team-role">Desarrollador · Ingeniería de Sistemas y Computación</div>
+                    <div class="team-links">
+                        <a class="team-link" href="mailto:miguela.marinm@uqvirtual.edu.co">
+                            <div class="team-link-icon">✉</div>
+                            miguela.marinm@uqvirtual.edu.co
+                        </a>
+                        <a class="team-link" href="https://github.com/migueAMM" target="_blank">
+                            <div class="team-link-icon">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                            </div>
+                            github.com/migueAMM
+                        </a>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- FOOTER DE LA HOME -->
+            <div class="home-footer">
+                <div class="home-footer-left">
+                    <strong>Universidad del Quindío</strong><br>
+                    Programa de Ingeniería de Sistemas y Computación<br>
+                    Análisis de Algoritmos · 2026-1
+                </div>
+                <div style="font-family:var(--mono);font-size:.62rem;color:var(--muted2)">
+                    Tecnología: Java 21 · HttpServer JDK · HTML/CSS/JS · Python · ReportLab
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ─────────────────────────────────────────────────────────────────────
+             SECCIÓN 1 — ETL
+             ───────────────────────────────────────────────────────────────────── -->
+        <section class="section" id="sec-etl">
+            <div class="section-head">
+                <span class="section-tag">// Requerimiento 1</span>
+                <h1 class="section-title">Proceso <span>ETL</span></h1>
+                <p class="section-desc">
+                    Extracción, transformación y carga de datos financieros históricos.
+                    Peticiones HTTP directas a Yahoo Finance — sin yfinance ni pandas_datareader.
+                </p>
+            </div>
+
+            <div id="etlContent">
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    Cargando datos del ETL...
+                </div>
+            </div>
+        </section>
+
+        <!-- ─────────────────────────────────────────────────────────────────────
+             SECCIÓN 2 — SORTING
+             ───────────────────────────────────────────────────────────────────── -->
+        <section class="section" id="sec-sorting">
+            <div class="section-head">
+                <span class="section-tag">// Requerimiento 2 · Seguimiento</span>
+                <h1 class="section-title">Algoritmos de <span>Ordenamiento</span></h1>
+                <p class="section-desc">
+                    Benchmark de 12 algoritmos sobre el dataset financiero unificado.
+                    Criterio: fecha de cotización, desempate por precio de cierre.
+                </p>
+            </div>
+            <div id="sortingContent">
+                <div class="loading-state">
+                    <div class="loading-spinner"></div>
+                    Cargando benchmark...
+                </div>
+            </div>
+        </section>
+
+        <!-- ─────────────────────────────────────────────────────────────────────
+             SECCIÓN 3 — SIMILITUD
+             ───────────────────────────────────────────────────────────────────── -->
+        <section class="section" id="sec-similitud">
+            <div class="section-head">
+                <span class="section-tag">// Requerimiento 3</span>
+                <h1 class="section-title">Similitud de <span>Series de Tiempo</span></h1>
+                <p class="section-desc">
+                    Cuatro algoritmos implementados desde cero en Java comparan los retornos logarítmicos diarios de dos activos.
+                </p>
+            </div>
+
+            <!-- Selector -->
+            <div class="panel" style="margin-bottom:1.5rem">
+                <div class="panel-header">
+                    <span class="panel-title">// Selección de activos</span>
+                </div>
+                <div class="panel-body">
+                    <div style="display:flex;align-items:flex-end;gap:1rem;flex-wrap:wrap">
+                        <div class="field">
+                            <label>Activo A</label>
+                            <select id="selA"><option value="">Cargando...</option></select>
+                        </div>
+                        <div style="font-family:var(--mono);font-size:1rem;color:var(--muted);padding-bottom:.6rem">VS</div>
+                        <div class="field">
+                            <label>Activo B</label>
+                            <select id="selB"><option value="">Cargando...</option></select>
+                        </div>
+                        <button class="btn btn-primary" id="btnComparar" onclick="calcularSimilitud()">
+                            Comparar →
+                        </button>
+                    </div>
+                    <div id="simStatus" style="font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-top:.75rem;min-height:1.1rem"></div>
+                </div>
+            </div>
+
+            <div id="simResultados" style="display:none">
+                <!-- Meta -->
+                <div id="simMeta" style="display:flex;gap:2rem;flex-wrap:wrap;padding:.75rem 1.25rem;
+         background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.15);
+         border-radius:6px;margin-bottom:1.5rem"></div>
+
+                <!-- Tarjetas de algoritmos -->
+                <p style="font-family:var(--mono);font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">// Resultados por algoritmo</p>
+                <div class="algo-cards" id="algoCards" style="margin-bottom:1.5rem"></div>
+
+                <!-- Estadísticas de retornos -->
+                <p style="font-family:var(--mono);font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">// Estadísticas descriptivas de retornos diarios</p>
+                <div class="grid-2" id="statsCards" style="margin-bottom:1.5rem"></div>
+
+                <!-- Fórmulas -->
+                <p style="font-family:var(--mono);font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">// Formulación matemática</p>
+                <div class="formulas-grid" id="formulasGrid"></div>
+            </div>
+
+            <div id="simError" style="display:none;background:var(--red-dim);border:1px solid rgba(255,64,96,.25);
+       border-radius:6px;padding:1rem 1.25rem;color:#ff8090;font-size:.85rem;margin-top:1rem"></div>
+        </section>
+
+        <!-- ─────────────────────────────────────────────────────────────────────
+             SECCIÓN 4 — DASHBOARD
+             ───────────────────────────────────────────────────────────────────── -->
+        <section class="section" id="sec-dashboard">
+            <div class="section-head">
+                <span class="section-tag">// Requerimiento 4</span>
+                <h1 class="section-title">Dashboard <span>Bursátil</span></h1>
+                <p class="section-desc">
+                    Correlación, candlestick con medias móviles, clasificación de riesgo y detección de patrones.
+                </p>
+            </div>
+
+            <!-- A: Heatmap -->
+            <div class="panel" style="margin-bottom:1.5rem">
+                <div class="panel-header">
+                    <span class="panel-title">// A — Mapa de calor · Correlación de Pearson</span>
+                    <div id="heatStatus" style="font-family:var(--mono);font-size:.65rem;color:var(--muted)"></div>
+                </div>
+                <div class="panel-body">
+                    <div class="heatmap-wrap">
+                        <canvas id="heatmapCanvas"></canvas>
+                    </div>
+                    <div class="scale-row">
+                        <canvas id="scaleCanvas" width="200" height="12" style="border-radius:3px"></canvas>
+                        <div class="scale-labels"><span>-1.0</span><span>0.0</span><span>+1.0</span></div>
+                    </div>
+                </div>
+            </div>
+            <div id="heatTooltip"></div>
+
+            <!-- B: Candlestick -->
+            <div class="panel" style="margin-bottom:1.5rem">
+                <div class="panel-header">
+                    <span class="panel-title">// B — Candlestick + Medias Móviles (SMA)</span>
+                    <div id="candleStatus" style="font-family:var(--mono);font-size:.65rem;color:var(--muted)"></div>
+                </div>
+                <div class="panel-body">
+                    <div class="controls">
+                        <div class="field">
+                            <label>Activo</label>
+                            <select id="candleTicker"><option value="">Cargando...</option></select>
+                        </div>
+                        <div class="field">
+                            <label>Período</label>
+                            <select id="candleDias">
+                                <option value="60">60 días</option>
+                                <option value="90">90 días</option>
+                                <option value="180" selected>180 días</option>
+                                <option value="365">365 días</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" id="btnVelas" onclick="cargarVelas()">Cargar →</button>
+                    </div>
+                    <div class="canvas-wrap">
+                        <canvas id="candleCanvas" height="380"></canvas>
+                    </div>
+                    <div style="display:flex;gap:1.5rem;margin-top:.75rem;flex-wrap:wrap">
+                        <div style="display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--muted)">
+                            <span style="width:10px;height:10px;border-radius:2px;background:var(--green);display:inline-block"></span>Alcista
+                        </div>
+                        <div style="display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--muted)">
+                            <span style="width:10px;height:10px;border-radius:2px;background:var(--red);display:inline-block"></span>Bajista
+                        </div>
+                        <div style="display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--muted)">
+                            <span style="width:22px;height:3px;border-radius:2px;background:var(--cyan);display:inline-block"></span>SMA 20
+                        </div>
+                        <div style="display:flex;align-items:center;gap:.4rem;font-size:.72rem;color:var(--muted)">
+                            <span style="width:22px;height:3px;border-radius:2px;background:var(--amber);display:inline-block"></span>SMA 50
+                        </div>
+                    </div>
+                    <div style="font-family:var(--mono);font-size:.65rem;color:var(--muted2);margin-top:.5rem">
+                        SMA(k) en el día i = (1/k) × Σ close[i−k+1 … i] — implementado con bucle explícito O(k) sin librerías
+                    </div>
+                </div>
+            </div>
+
+            <!-- C: Patrones -->
+            <p style="font-family:var(--mono);font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem">// C — Patrones detectados por ventana deslizante (w=20 días)</p>
+            <div class="patron-grid">
+                <div class="patron-card">
+                    <h3>Patrón 1 · Racha Alcista (≥3 días)</h3>
+                    <p class="patron-desc">Detecta ventanas con 3 o más días consecutivos donde el cierre sube. Indica momentum alcista sostenido.</p>
+                    <div class="patron-formula">
+                        $$\exists\, i : \text{close}[i+j] > \text{close}[i+j-1]$$
+                        $$\forall\, j \in \{1, \ldots, k-1\},\quad k \geq 3$$
+                    </div>
+                </div>
+                <div class="patron-card">
+                    <h3>Patrón 2 · Compresión de Rango (≥30%)</h3>
+                    <p class="patron-desc">Detecta ventanas donde el rango intradiario promedio de la 2ª mitad cae ≥30% vs la 1ª mitad. Señala consolidación previa a breakout.</p>
+                    <div class="patron-formula">
+                        $$\text{RDP}(H_2) < 0.70 \times \text{RDP}(H_1)$$
+                        $$\text{RDP}(S) = \frac{1}{|S|} \sum_{i \in S} \frac{\text{high}_i - \text{low}_i}{\text{close}_i}$$
+                    </div>
+                </div>
+            </div>
+
+            <!-- D: Ranking de riesgo -->
+            <div class="panel" style="margin-bottom:1.5rem">
+                <div class="panel-header">
+                    <span class="panel-title">// D — Ranking de Riesgo (menor → mayor)</span>
+                    <div style="display:flex;gap:.5rem;flex-wrap:wrap" id="filterBtns">
+                        <button class="btn btn-outline" style="padding:.3rem .7rem;font-size:.62rem" onclick="filtrarRiesgo('TODOS',this)">Todos</button>
+                        <button class="btn" style="background:var(--green-dim);color:var(--green);border:1px solid rgba(0,255,136,.3);padding:.3rem .7rem;font-size:.62rem" onclick="filtrarRiesgo('CONSERVADOR',this)">Conservador</button>
+                        <button class="btn" style="background:var(--amber-dim);color:var(--amber);border:1px solid rgba(255,179,0,.3);padding:.3rem .7rem;font-size:.62rem" onclick="filtrarRiesgo('MODERADO',this)">Moderado</button>
+                        <button class="btn" style="background:var(--red-dim);color:var(--red);border:1px solid rgba(255,64,96,.3);padding:.3rem .7rem;font-size:.62rem" onclick="filtrarRiesgo('AGRESIVO',this)">Agresivo</button>
+                    </div>
+                </div>
+                <div class="panel-body" id="riesgoContent">
+                    <div class="loading-state"><div class="loading-spinner"></div>Cargando datos de riesgo...</div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div><!-- /root -->
+
+<script>
+    /* Llama a MathJax de forma segura esperando a que cargue */
+    function renderMath(el) {
+        if (window.MathJax && typeof MathJax.typesetPromise === 'function') {
+            if (el && MathJax.typesetClear) MathJax.typesetClear([el]);
+            MathJax.typesetPromise(el ? [el] : undefined).catch(err => console.warn('MathJax:', err));
+        } else {
+            setTimeout(() => renderMath(el), 300);
+        }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       TICKER ANIMADO — HOME
+       ═══════════════════════════════════════════════════════════════════════ */
+    const TICKER_DATA = [
+        {sym:'VOO', val:'+0.84%'}, {sym:'AAPL', val:'+1.23%'}, {sym:'MSFT', val:'+0.67%'},
+        {sym:'GOOGL', val:'-0.32%'}, {sym:'AMZN', val:'+2.11%'}, {sym:'TSLA', val:'+3.45%'},
+        {sym:'META', val:'+1.78%'}, {sym:'NVDA', val:'+4.20%'}, {sym:'SPY', val:'+0.92%'},
+        {sym:'QQQ', val:'+1.34%'}, {sym:'JPM', val:'-0.15%'}, {sym:'V', val:'+0.55%'},
+        {sym:'WMT', val:'+0.23%'}, {sym:'JNJ', val:'-0.44%'}, {sym:'PG', val:'+0.18%'},
+        {sym:'MA', val:'+0.71%'}, {sym:'UNH', val:'-0.88%'}, {sym:'HD', val:'+0.49%'},
+        {sym:'BAC', val:'+1.05%'}, {sym:'DIS', val:'-1.22%'}
+    ];
+
+    function initTicker() {
+        const items = [...TICKER_DATA, ...TICKER_DATA].map(d => {
+            const pos = d.val.startsWith('+');
+            return `<div class="ticker-item">
+      <span class="t-name">${d.sym}</span>
+      <span class="${pos?'t-pos':'t-neg'}">${d.val}</span>
+    </div>`;
+        }).join('');
+        const el = document.getElementById('tickerInner');
+        if (el) el.innerHTML = items;
+    }
+
+
+    const API = '';   // mismo origen, puerto 8080
+    let todosActivos = [];
+    let filtroRiesgo = 'TODOS';
+    let heatData     = null;
+    let maxVolSorting= 1;
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       NAVEGACIÓN SPA
+       ═══════════════════════════════════════════════════════════════════════ */
+    function irA(id, btn) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('sec-' + id).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       INICIALIZACIÓN
+       ═══════════════════════════════════════════════════════════════════════ */
+    window.addEventListener('DOMContentLoaded', async () => {
+        initTicker();
+        setStatus('loading', 'Conectando...');
+        try {
+            const h = await fetch('/health').then(r => r.json());
+            setStatus('ok', h.activos + ' activos · Sistema listo');
+        } catch(e) {
+            setStatus('err', 'Sin conexión con Java');
+        }
+
+        // Pre-cargar datos en paralelo (no bloquean la UI)
+        cargarETL();
+        cargarSorting();
+        cargarTickers();
+        cargarHeatmap();
+        cargarRiesgo();
+        dibujarEscalaHeatmap();
+
+        // Renderizar fórmulas estáticas (patrones del Dashboard)
+        renderMath();
+    });
+
+    function setStatus(tipo, msg) {
+        const pill = document.getElementById('statusPill');
+        const txt  = document.getElementById('statusText');
+        txt.textContent = msg;
+        pill.className = 'status-pill' + (tipo === 'loading' ? ' loading' : '');
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       SECCIÓN 1 — ETL
+       ═══════════════════════════════════════════════════════════════════════ */
+    async function cargarETL() {
+        try {
+            const d = await fetch('/api/etl').then(r => r.json());
+            const cont = document.getElementById('etlContent');
+
+            // KPI cards
+            const kpis = `
+      <div class="grid-4" style="margin-bottom:1.5rem">
+        <div class="kpi" style="--accent:var(--cyan)">
+          <div class="kpi-label">Total activos</div>
+          <div class="kpi-value">${d.totalActivos}</div>
+          <div class="kpi-sub">Portafolio analizado</div>
+        </div>
+        <div class="kpi" style="--accent:var(--green)">
+          <div class="kpi-label">Total registros</div>
+          <div class="kpi-value">${d.totalRegistros.toLocaleString()}</div>
+          <div class="kpi-sub">Días de cotización limpios</div>
+        </div>
+        <div class="kpi" style="--accent:var(--amber)">
+          <div class="kpi-label">Horizonte</div>
+          <div class="kpi-value">5 años</div>
+          <div class="kpi-sub">Datos históricos diarios</div>
+        </div>
+        <div class="kpi" style="--accent:var(--purple)">
+          <div class="kpi-label">Fuente</div>
+          <div class="kpi-value mono" style="font-size:1rem">Yahoo API</div>
+          <div class="kpi-sub">HTTP directo · Sin yfinance</div>
+        </div>
+      </div>`;
+
+            // Grid de tickers
+            const tickers = Object.entries(d.registrosPorActivo || {});
+            const tickerCards = tickers.map(([t, n]) => `
+      <div class="etl-ticker-card">
+        <span class="etl-ticker-name">${t}</span>
+        <span class="etl-ticker-count">${n.toLocaleString()} reg.</span>
+      </div>`).join('');
+
+            // Info técnica
+            const info = `
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">// Detalle técnico — Proceso ETL</span>
+        </div>
+        <div class="panel-body">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;font-size:.82rem;color:var(--muted);line-height:1.7">
+            <div>
+              <p style="color:var(--text);font-family:var(--mono);font-size:.72rem;margin-bottom:.4rem">Descarga (ApiClient.java)</p>
+              <code style="font-family:var(--mono);font-size:.7rem;color:var(--cyan)">HttpClient.newBuilder().version(HTTP_2)<br>.connectTimeout(10s).build()</code><br>
+              URL: <code style="font-family:var(--mono);font-size:.7rem;color:var(--cyan)">query1.finance.yahoo.com/v8/finance/chart/{ticker}?range=5y&interval=1d</code>
+            </div>
+            <div>
+              <p style="color:var(--text);font-family:var(--mono);font-size:.72rem;margin-bottom:.4rem">Parseo JSON (DataParser.java)</p>
+              Navega chart → result → indicators → quote.<br>
+              Limpieza: descarta registros con open/close/volume = null.<br>
+              Timestamp Unix → LocalDate (zona America/New_York).
+            </div>
+            <div>
+              <p style="color:var(--text);font-family:var(--mono);font-size:.72rem;margin-bottom:.4rem">Descarga única unificada</p>
+              Los 3 servicios (Similitud, Riesgo, Benchmark) reciben la<br>
+              <strong style="color:var(--text)">misma List&lt;RegistroFinanciero&gt;</strong> en memoria.<br>
+              No hay re-descarga ni datasets estáticos.
+            </div>
+          </div>
+        </div>
+      </div>`;
+
+            cont.innerHTML = kpis +
+                `<div class="panel" style="margin-bottom:1.5rem">
+        <div class="panel-header"><span class="panel-title">// Activos cargados (${tickers.length})</span></div>
+        <div class="panel-body"><div class="etl-ticker-grid">${tickerCards}</div></div>
+      </div>` + info;
+
+        } catch(e) {
+            document.getElementById('etlContent').innerHTML =
+                `<div class="loading-state"><span style="color:var(--red)">Error al cargar ETL: ${e.message}</span></div>`;
+        }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       SECCIÓN 2 — SORTING
+       ═══════════════════════════════════════════════════════════════════════ */
+    async function cargarSorting() {
+        try {
+            const d = await fetch('/api/benchmark').then(r => r.json());
+            const cont = document.getElementById('sortingContent');
+
+            // Ordenar ascendente por tiempo para el gráfico
+            const sorted = [...d.algoritmos].sort((a,b) => a.tiempoMs - b.tiempoMs);
+            const maxT = Math.max(...sorted.map(a => a.tiempoMs), 1);
+
+            // Paleta de colores para las barras
+            const colores = ['#00d4ff','#00b8dc','#009aba','#007d98','#006076',
+                '#00ff88','#00dc77','#00b860','#00ff88','#00d4ff',
+                '#b060ff','#8040cc'];
+
+            const barras = sorted.map((a,i) => {
+                const w = (a.tiempoMs / maxT * 100).toFixed(1);
+                const c = colores[i % colores.length];
+                const label = a.tiempoMs === 0 ? '< 1 ms' : `${a.tiempoMs} ms`;
+                return `
+        <div class="bar-row">
+          <span class="bar-label">${a.nombre}</span>
+          <div class="bar-track">
+            <div class="bar-fill"
+                 style="width:0%;background:${c};transition-delay:${i*0.06}s"
+                 data-w="${w}"></div>
+          </div>
+          <span class="bar-val" style="color:${c}">${label}</span>
+          <span class="bar-complexity">${a.complejidad}</span>
+        </div>`;
+            }).join('');
+
+            // Tabla completa
+            const filas = d.algoritmos.map((a,i) => `
+      <tr>
+        <td class="mono" style="color:var(--muted)">${i+1}</td>
+        <td class="mono">${a.nombre}</td>
+        <td class="mono" style="color:var(--purple)">${a.complejidad}</td>
+        <td class="mono">${a.tamano.toLocaleString()}</td>
+        <td class="mono" style="color:var(--cyan)">${a.tiempoMs} ms</td>
+      </tr>`).join('');
+
+            // Top-15 volumen
+            const volFilas = (d.top15Volumen || []).map((v,i) => `
+      <tr>
+        <td class="mono" style="color:var(--muted)">${i+1}</td>
+        <td class="mono" style="color:var(--cyan)">${v.activo}</td>
+        <td class="mono">${v.fecha}</td>
+        <td class="mono">${v.volumen.toLocaleString()}</td>
+        <td class="mono">$${v.close.toFixed(2)}</td>
+      </tr>`).join('');
+
+            cont.innerHTML = `
+      <!-- Gráfico de barras -->
+      <div class="panel" style="margin-bottom:1.5rem">
+        <div class="panel-header">
+          <span class="panel-title">// Tiempos de ejecución — 12 algoritmos (ascendente)</span>
+          <span style="font-family:var(--mono);font-size:.65rem;color:var(--muted)">${d.totalRegistros.toLocaleString()} registros</span>
+        </div>
+        <div class="panel-body">
+          <div class="bar-chart-wrap" id="barChart">${barras}</div>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="grid-2" style="margin-bottom:1.5rem">
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">// Tabla comparativa</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Algoritmo</th><th>O()</th><th>Tamaño</th><th>Tiempo</th></tr></thead>
+              <tbody>${filas}</tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Top-15 volumen -->
+        <div class="panel">
+          <div class="panel-header"><span class="panel-title">// Top 15 — Mayor volumen de negociación</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Activo</th><th>Fecha</th><th>Volumen</th><th>Close</th></tr></thead>
+              <tbody>${volFilas}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>`;
+
+            // Animar barras con requestAnimationFrame
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    document.querySelectorAll('#barChart .bar-fill').forEach(b => {
+                        b.style.width = b.dataset.w + '%';
+                    });
+                }, 100);
+            });
+
+        } catch(e) {
+            document.getElementById('sortingContent').innerHTML =
+                `<div class="loading-state"><span style="color:var(--red)">Error: ${e.message}</span></div>`;
+        }
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       SECCIÓN 3 — SIMILITUD
+       ═══════════════════════════════════════════════════════════════════════ */
+    async function cargarTickers() {
+        try {
+            const d = await fetch('/api/tickers').then(r => r.json());
+            const tickers = d.tickers || [];
+            ['selA','selB','candleTicker'].forEach((id,idx) => {
+                const sel = document.getElementById(id);
+                sel.innerHTML = tickers.map(t => `<option value="${t}">${t}</option>`).join('');
+                if (id==='selB' && tickers.length > 1) sel.value = tickers[1];
+            });
+            // Cargar primera vela automáticamente
+            if (tickers.length) cargarVelas();
+        } catch(e) { console.error('Error cargando tickers:', e); }
+    }
+
+    async function calcularSimilitud() {
+        const a = document.getElementById('selA').value;
+        const b = document.getElementById('selB').value;
+        const btn = document.getElementById('btnComparar');
+        const status = document.getElementById('simStatus');
+        const res = document.getElementById('simResultados');
+        const err = document.getElementById('simError');
+
+        if (!a || !b || a===b) {
+            status.textContent = '⚠ Selecciona dos activos diferentes.';
+            return;
+        }
+
+        btn.disabled = true;
+        res.style.display = 'none';
+        err.style.display = 'none';
+        status.innerHTML = '<span style="color:var(--amber)">● Calculando… DTW puede tardar 2-4s</span>';
+
+        try {
+            const d = await fetch(`/api/similitud?a=${a}&b=${b}`).then(r => r.json());
+            if (d.error) throw new Error(d.error);
+            renderSimilitud(d);
+            status.innerHTML = `<span style="color:var(--green)">✓ ${a} vs ${b} · ${d.diasComunes} días comunes</span>`;
+            res.style.display = 'block';
+        } catch(e) {
+            err.textContent = '⚠ ' + e.message;
+            err.style.display = 'block';
+            status.textContent = '';
+        } finally { btn.disabled = false; }
+    }
+
+    function renderSimilitud(d) {
+        // Meta bar
+        document.getElementById('simMeta').innerHTML = [
+            ['Par', `${d.tickerA} / ${d.tickerB}`],
+            ['Días comunes', d.diasComunes],
+            ['Algoritmos', 4],
+            ['Serie', 'Retornos log. diarios']
+        ].map(([l,v]) => `
+    <div style="display:flex;flex-direction:column;gap:.15rem">
+      <span style="font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)">${l}</span>
+      <span style="font-family:var(--mono);font-size:.9rem;font-weight:700;color:var(--text)">${v}</span>
+    </div>`).join('<div style="width:1px;background:var(--border)"></div>');
+
+        // Tarjetas algoritmos
+        document.getElementById('algoCards').innerHTML = (d.resultados||[]).map(r => `
+    <div class="algo-card">
+      <div class="algo-time">${r.tiempoMs} ms</div>
+      <div class="algo-name">${r.nombre}</div>
+      <div class="algo-value">${isNaN(r.valor)?'N/A':r.valor.toFixed(6)}</div>
+      <div class="algo-complexity">${r.complejidad}</div>
+      <div class="algo-interp">${r.interpretacion}</div>
+    </div>`).join('');
+
+        // Stats
+        const fmtP = v => v !== undefined ? (v*100).toFixed(3)+'%' : '—';
+        const statCard = s => `
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">${s.ticker}</span>
+        <span style="font-family:var(--mono);font-size:.65rem;color:var(--muted)">Retornos diarios</span>
+      </div>
+      <div class="panel-body" style="padding:1rem 1.5rem">
+        ${[
+            ['Retorno medio diario', fmtP(s.mediaRetorno), s.mediaRetorno>=0?'pos':'neg'],
+            ['Desv. estándar',       fmtP(s.desvStd),     ''],
+            ['Volatilidad anual',    fmtP(s.volatilidadAnual), ''],
+            ['Retorno mínimo',       fmtP(s.minRetorno), 'neg'],
+            ['Retorno máximo',       fmtP(s.maxRetorno), 'pos'],
+            ['Observaciones',        s.nObservaciones,   '']
+        ].map(([l,v,cls]) => `
+          <div class="stats-row">
+            <span class="stats-label">${l}</span>
+            <span class="stats-val ${cls}">${v}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+        document.getElementById('statsCards').innerHTML = statCard(d.statsA) + statCard(d.statsB);
+
+        // Fórmulas
+        document.getElementById('formulasGrid').innerHTML = `
+    <div class="formula-card">
+      <h4>Retorno logarítmico · O(n)</h4>
+      <div class="formula-math">
+        $$r_t = \\ln\\!\\left(\\frac{\\text{close}_t}{\\text{close}_{t-1}}\\right)$$
+        <p style="font-size:.68rem;color:var(--muted);margin-top:.5rem">Aditivo en el tiempo. Mejor comportamiento estadístico.</p>
+      </div>
+    </div>
+    <div class="formula-card">
+      <h4>Distancia Euclidiana · O(n)</h4>
+      <div class="formula-math">
+        $$d(A,B) = \\sqrt{\\sum_{i=1}^{n}(a_i - b_i)^2}$$
+      </div>
+    </div>
+    <div class="formula-card">
+      <h4>Correlación de Pearson · O(n)</h4>
+      <div class="formula-math">
+        $$r = \\frac{\\sum(a_i-\\bar{a})(b_i-\\bar{b})}{\\sqrt{\\sum(a_i-\\bar{a})^2 \\cdot \\sum(b_i-\\bar{b})^2}}$$
+        <p style="font-size:.68rem;color:var(--muted);margin-top:.5rem">$r \\in [-1,\\,1]$</p>
+      </div>
+    </div>
+    <div class="formula-card">
+      <h4>Dynamic Time Warping · O(n·b)</h4>
+      <div class="formula-math">
+        $$\\begin{aligned} D(i,j) &= |a_i - b_j| \\\\ &+ \\min\\bigl(D(i{-}1,j),\\; D(i,j{-}1),\\; D(i{-}1,j{-}1)\\bigr) \\end{aligned}$$
+        <p style="font-size:.68rem;color:var(--muted);margin-top:.5rem">Banda Sakoe-Chiba: $w = 10\\%$ de $n$</p>
+      </div>
+    </div>
+    <div class="formula-card">
+      <h4>Similitud Coseno · O(n)</h4>
+      <div class="formula-math">
+        $$\\cos \\theta = \\frac{\\sum a_i b_i}{\\sqrt{\\sum a_i^2} \\cdot \\sqrt{\\sum b_i^2}}$$
+        <p style="font-size:.68rem;color:var(--muted);margin-top:.5rem">$$\\cos \\theta \\in [-1,\\,1]$$</p>
+      </div>
+    </div>`;
+
+        // Renderizar MathJax en las fórmulas recién insertadas
+        renderMath(document.getElementById('formulasGrid'));
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       SECCIÓN 4 — HEATMAP
+       ═══════════════════════════════════════════════════════════════════════ */
+    function lerp(a,b,t){return Math.round(a+(b-a)*t)}
+
+    function correlColor(v) {
+        if (isNaN(v)||v===null) return '#1e3050';
+        v = Math.max(-1,Math.min(1,v));
+        const nr=42,ng=60,nb=80;
+        if (v<0) {
+            const t=-v;
+            return `rgb(${lerp(nr,20,t)},${lerp(ng,60,t)},${lerp(nb,160,t)})`;
+        } else {
+            const t=v;
+            return `rgb(${lerp(nr,180,t)},${lerp(ng,30,t)},${lerp(nb,40,t)})`;
+        }
+    }
+
+    async function cargarHeatmap() {
+        const statusEl = document.getElementById('heatStatus');
+        statusEl.textContent = 'Cargando...';
+        try {
+            const d = await fetch('/api/correlacion').then(r => r.json());
+            heatData = d;
+            dibujarHeatmap(d);
+            statusEl.textContent = `${d.tickers.length}×${d.tickers.length} — pasa el cursor sobre las celdas`;
+        } catch(e) {
+            statusEl.style.color = 'var(--red)';
+            statusEl.textContent = 'Error: ' + e.message;
+        }
+    }
+
+    function dibujarHeatmap(data) {
+        const tickers = data.tickers;
+        const n = tickers.length;
+        const canvas = document.getElementById('heatmapCanvas');
+        const ctx = canvas.getContext('2d');
+
+        const LW = 76, LH = 76, PAD = 8;
+        const maxCW = Math.floor((Math.min(1200, window.innerWidth - 120) - LW - PAD) / n);
+        const CELL = Math.max(24, Math.min(48, maxCW));
+
+        canvas.width  = LW + n*CELL + PAD;
+        canvas.height = LH + n*CELL + PAD;
+
+        ctx.fillStyle = '#0a0f1e';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Etiquetas columnas
+        ctx.font = `bold ${Math.max(8,Math.min(11,CELL-4))}px 'IBM Plex Mono', monospace`;
+        ctx.fillStyle = '#4a6080';
+        ctx.textAlign = 'left';
+        for (let j=0; j<n; j++) {
+            const cx = LW + j*CELL + CELL/2;
+            ctx.save();
+            ctx.translate(cx, LH-6);
+            ctx.rotate(-Math.PI/4);
+            ctx.fillText(tickers[j], 0, 0);
+            ctx.restore();
+        }
+
+        // Etiquetas filas
+        ctx.textAlign = 'right';
+        for (let i=0; i<n; i++) {
+            const cy = LH + i*CELL + CELL/2 + 4;
+            ctx.fillText(tickers[i], LW-6, cy);
+        }
+
+        // Celdas
+        const valFont = `${Math.max(7,Math.min(10,CELL-8))}px 'IBM Plex Mono', monospace`;
+        ctx.textAlign = 'center';
+        for (let i=0; i<n; i++) {
+            for (let j=0; j<n; j++) {
+                const val = data.matriz[i][j];
+                const cx = LW+j*CELL, cy = LH+i*CELL;
+                ctx.fillStyle = correlColor(val);
+                ctx.fillRect(cx, cy, CELL-1, CELL-1);
+                if (CELL >= 28) {
+                    ctx.fillStyle = Math.abs(val||0)>0.4?'rgba(255,255,255,.9)':'rgba(0,0,0,.7)';
+                    ctx.font = valFont;
+                    ctx.fillText(isNaN(val)?'—':val.toFixed(2), cx+CELL/2, cy+CELL/2+3);
+                }
+            }
+        }
+    }
+
+    // Tooltip heatmap
+    document.addEventListener('DOMContentLoaded', () => {
+        const canvas = document.getElementById('heatmapCanvas');
+        const tip = document.getElementById('heatTooltip');
+        canvas.addEventListener('mousemove', e => {
+            if (!heatData) return;
+            const rect = canvas.getBoundingClientRect();
+            const sx = canvas.width/rect.width, sy = canvas.height/rect.height;
+            const mx = (e.clientX-rect.left)*sx, my = (e.clientY-rect.top)*sy;
+            const n = heatData.tickers.length;
+            const LW=76,LH=76;
+            const CELL = (canvas.width-LW-8)/n;
+            const j = Math.floor((mx-LW)/CELL), i = Math.floor((my-LH)/CELL);
+            if (i>=0&&i<n&&j>=0&&j<n) {
+                const val = heatData.matriz[i][j];
+                tip.textContent = `${heatData.tickers[i]} vs ${heatData.tickers[j]}: ${isNaN(val)?'N/A':val.toFixed(4)}`;
+                tip.style.display='block';
+                tip.style.left=(e.clientX+14)+'px';
+                tip.style.top=(e.clientY-30)+'px';
+            } else { tip.style.display='none'; }
+        });
+        canvas.addEventListener('mouseleave', () => { tip.style.display='none'; });
+    });
+
+    function dibujarEscalaHeatmap() {
+        const canvas = document.getElementById('scaleCanvas');
+        const ctx = canvas.getContext('2d');
+        for (let x=0; x<200; x++) {
+            ctx.fillStyle = correlColor((x/200)*2-1);
+            ctx.fillRect(x, 0, 1, 12);
+        }
+        ctx.strokeStyle = '#1e3050';
+        ctx.strokeRect(0,0,200,12);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       SECCIÓN 4 — CANDLESTICK
+       ═══════════════════════════════════════════════════════════════════════ */
+    function computeSMA(closes, k) {
+        const sma = new Array(closes.length).fill(null);
+        for (let i=k-1; i<closes.length; i++) {
+            let sum=0;
+            for (let j=i-k+1; j<=i; j++) sum+=closes[j];
+            sma[i]=sum/k;
+        }
+        return sma;
+    }
+
+    async function cargarVelas() {
+        const ticker = document.getElementById('candleTicker').value;
+        const dias   = document.getElementById('candleDias').value;
+        const btn    = document.getElementById('btnVelas');
+        const status = document.getElementById('candleStatus');
+        if (!ticker) return;
+        btn.disabled=true;
+        status.textContent='Cargando...';
+        try {
+            const d = await fetch(`/api/ohlc?ticker=${ticker}&dias=${dias}`).then(r=>r.json());
+            if (d.error) throw new Error(d.error);
+            dibujarVelas(d.datos||[]);
+            status.textContent=`${ticker} · ${(d.datos||[]).length} velas`;
+        } catch(e) {
+            status.style.color='var(--red)';
+            status.textContent='Error: '+e.message;
+        } finally { btn.disabled=false; }
+    }
+
+    function dibujarVelas(datos) {
+        const canvas = document.getElementById('candleCanvas');
+        const ctx = canvas.getContext('2d');
+        const DPR = window.devicePixelRatio||1;
+        const W = canvas.parentElement.clientWidth, H = 380;
+        canvas.width=W*DPR; canvas.height=H*DPR;
+        canvas.style.width=W+'px'; canvas.style.height=H+'px';
+        ctx.scale(DPR,DPR);
+
+        const n = datos.length;
+        if (!n) return;
+
+        const ML=72,MR=16,MT=24,MB=52;
+        const PW=W-ML-MR, PH=H-MT-MB;
+
+        let minP=Infinity, maxP=-Infinity;
+        datos.forEach(d => { if(d.low<minP)minP=d.low; if(d.high>maxP)maxP=d.high; });
+        const pad=(maxP-minP)*0.06||1;
+        const pMin=minP-pad, pMax=maxP+pad;
+        const py = p => MT+PH-((p-pMin)/(pMax-pMin))*PH;
+        const px = i => ML+(i+0.5)*(PW/n);
+
+        // Fondo
+        ctx.fillStyle='#0f1628'; ctx.fillRect(0,0,W,H);
+
+        // Grid
+        ctx.strokeStyle='#1e3050'; ctx.lineWidth=0.5;
+        ctx.font='9px IBM Plex Mono, monospace'; ctx.fillStyle='#2a3a54'; ctx.textAlign='right';
+        for (let k=0; k<=5; k++) {
+            const y=MT+k*(PH/5);
+            ctx.beginPath(); ctx.moveTo(ML,y); ctx.lineTo(W-MR,y); ctx.stroke();
+            const p=pMax-k*((pMax-pMin)/5);
+            ctx.fillStyle='#4a6080';
+            ctx.fillText(p.toFixed(2), ML-6, y+4);
+        }
+
+        // Velas
+        const cw=Math.max(1,(PW/n)*0.72);
+        datos.forEach((d,i) => {
+            const x=px(i), clr=d.close>=d.open?'#00ff88':'#ff4060';
+            ctx.beginPath(); ctx.strokeStyle=clr; ctx.lineWidth=1;
+            ctx.moveTo(x,py(d.high)); ctx.lineTo(x,py(d.low)); ctx.stroke();
+            const bT=py(Math.max(d.open,d.close)), bB=py(Math.min(d.open,d.close));
+            ctx.fillStyle=clr;
+            ctx.fillRect(x-cw/2, bT, cw, Math.max(1,bB-bT));
+        });
+
+        // SMAs
+        const closes=datos.map(d=>d.close);
+        const sma20=computeSMA(closes,20), sma50=computeSMA(closes,50);
+        [[sma20,'#00d4ff'],[sma50,'#ffb300']].forEach(([sma,color]) => {
+            ctx.beginPath(); ctx.strokeStyle=color; ctx.lineWidth=1.5;
+            let started=false;
+            sma.forEach((v,i) => {
+                if(v===null) return;
+                if(!started){ctx.moveTo(px(i),py(v));started=true;}
+                else ctx.lineTo(px(i),py(v));
+            });
+            ctx.stroke();
+        });
+
+        // Eje X
+        const step=Math.max(1,Math.floor(n/9));
+        ctx.font='8px IBM Plex Mono, monospace'; ctx.fillStyle='#2a3a54'; ctx.textAlign='center';
+        for (let i=0; i<n; i+=step) {
+            ctx.save(); ctx.translate(px(i),H-MB+12); ctx.rotate(-Math.PI/5);
+            ctx.fillStyle='#4a6080';
+            ctx.fillText(datos[i].fecha.substring(0,10), 0, 0);
+            ctx.restore();
+        }
+
+        // Eje
+        ctx.strokeStyle='#1e3050'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(ML,MT); ctx.lineTo(ML,H-MB); ctx.lineTo(W-MR,H-MB); ctx.stroke();
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       SECCIÓN 4 — RIESGO
+       ═══════════════════════════════════════════════════════════════════════ */
+    async function cargarRiesgo() {
+        try {
+            const d = await fetch('/api/riesgo').then(r=>r.json());
+            todosActivos = d.activos || [];
+            renderRiesgo(d.resumen);
+        } catch(e) {
+            document.getElementById('riesgoContent').innerHTML =
+                `<span style="color:var(--red)">Error: ${e.message}</span>`;
+        }
+    }
+
+    function catKey(a) {
+        const v=a.volatilidadAnual;
+        if(v<0.15) return 'CONSERVADOR';
+        if(v<0.30) return 'MODERADO';
+        return 'AGRESIVO';
+    }
+
+    function renderRiesgo(r) {
+        const cont = document.getElementById('riesgoContent');
+        if (!r) return;
+
+        // KPI row
+        const kpiRow = `
+    <div class="grid-4" style="margin-bottom:1.5rem">
+      <div class="kpi" style="--accent:var(--cyan)">
+        <div class="kpi-label">Total activos</div>
+        <div class="kpi-value">${r.totalActivos}</div>
+      </div>
+      <div class="kpi" style="--accent:var(--green)">
+        <div class="kpi-label">Conservadores</div>
+        <div class="kpi-value">${r.conservadores}</div>
+        <div class="kpi-sub">vol. anual &lt; 15%</div>
+      </div>
+      <div class="kpi" style="--accent:var(--amber)">
+        <div class="kpi-label">Moderados</div>
+        <div class="kpi-value">${r.moderados}</div>
+        <div class="kpi-sub">15% ≤ vol. &lt; 30%</div>
+      </div>
+      <div class="kpi" style="--accent:var(--red)">
+        <div class="kpi-label">Agresivos</div>
+        <div class="kpi-value">${r.agresivos}</div>
+        <div class="kpi-sub">vol. anual ≥ 30%</div>
+      </div>
+    </div>
+    <div style="margin-bottom:1.5rem">
+      <div style="font-family:var(--mono);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem">// Distribución del portafolio</div>
+      <div class="dist-bar">
+        <div class="dist-seg-cons" style="width:${r.pctConservadores.toFixed(0)}%"></div>
+        <div class="dist-seg-mod"  style="width:${r.pctModerados.toFixed(0)}%"></div>
+        <div class="dist-seg-agr"  style="width:${r.pctAgresivos.toFixed(0)}%"></div>
+      </div>
+      <div class="dist-legend">
+        <div class="dist-item"><div class="dist-dot" style="background:var(--green)"></div>Conservador ${r.conservadores} (${r.pctConservadores.toFixed(0)}%)</div>
+        <div class="dist-item"><div class="dist-dot" style="background:var(--amber)"></div>Moderado ${r.moderados} (${r.pctModerados.toFixed(0)}%)</div>
+        <div class="dist-item"><div class="dist-dot" style="background:var(--red)"></div>Agresivo ${r.agresivos} (${r.pctAgresivos.toFixed(0)}%)</div>
+      </div>
+    </div>`;
+
+        cont.innerHTML = kpiRow + `<div id="tablaRiesgoWrap" class="table-wrap"></div>`;
+        renderTablaRiesgo();
+    }
+
+    function renderTablaRiesgo() {
+        const lista = filtroRiesgo==='TODOS' ? todosActivos
+            : todosActivos.filter(a => catKey(a)===filtroRiesgo);
+        const maxV = Math.max(...todosActivos.map(a=>a.volatilidadAnual),0.01);
+
+        const filas = lista.map((a,i) => {
+            const k = catKey(a);
+            const badgeCls = k==='CONSERVADOR'?'badge-cons':k==='MODERADO'?'badge-mod':'badge-agr';
+            const bw = ((a.volatilidadAnual/maxV)*100).toFixed(1);
+            const bc = k==='CONSERVADOR'?'var(--green)':k==='MODERADO'?'var(--amber)':'var(--red)';
+            const p1 = a.patrones&&a.patrones[0]?a.patrones[0].frecuenciaPct.toFixed(1):0;
+            const p2 = a.patrones&&a.patrones[1]?a.patrones[1].frecuenciaPct.toFixed(1):0;
+            return `
+      <tr>
+        <td class="mono neu">${i+1}</td>
+        <td class="mono" style="color:var(--cyan)">${a.ticker}</td>
+        <td><span class="badge ${badgeCls}">${a.categoriaNombre}</span></td>
+        <td>
+          <div class="mono">${(a.volatilidadAnual*100).toFixed(2)}%</div>
+          <div style="height:4px;border-radius:2px;background:var(--border);margin-top:3px;overflow:hidden">
+            <div style="height:100%;border-radius:2px;background:${bc};width:${bw}%"></div>
+          </div>
+        </td>
+        <td class="mono">${a.desviacionEstandar.toFixed(4)}</td>
+        <td class="mono ${a.mediaRetornoDiario>=0?'pos':'neg'}">${(a.mediaRetornoDiario*100).toFixed(3)}%</td>
+        <td class="mono ${a.sharpeAproximado>=0?'pos':'neg'}">${a.sharpeAproximado.toFixed(2)}</td>
+        <td class="mono">${p1}%</td>
+        <td class="mono">${p2}%</td>
+        <td class="mono neu">${a.nDias}</td>
+      </tr>`;
+        }).join('');
+
+        document.getElementById('tablaRiesgoWrap').innerHTML = `
+    <table>
+      <thead><tr>
+        <th>#</th><th>Ticker</th><th>Categoría</th>
+        <th>Vol. Anual</th><th>σ Diaria</th><th>Retorno Medio</th>
+        <th>Sharpe</th><th>Patrón 1</th><th>Patrón 2</th><th>Días</th>
+      </tr></thead>
+      <tbody>${filas}</tbody>
+    </table>`;
+    }
+
+    function filtrarRiesgo(cat) {
+        filtroRiesgo = cat;
+        if (todosActivos.length) renderTablaRiesgo();
+    }
+
+    // Redibujar velas al redimensionar
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (heatData) dibujarHeatmap(heatData);
+            if (document.getElementById('candleTicker').value) cargarVelas();
+        }, 300);
+    });
+</script>
+</body>
+</html>
