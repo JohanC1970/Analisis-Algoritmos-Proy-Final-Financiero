@@ -46,7 +46,9 @@ import java.util.Map;
  */
 public class ServidorUnificado {
 
-    private static final int PUERTO = 8080;
+    private static final int PUERTO = Integer.parseInt(
+            System.getenv().getOrDefault("PORT", "8080")
+    );
 
     private final HttpServer         servidor;
     private final SimilitudService   similitudService;
